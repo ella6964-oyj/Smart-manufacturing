@@ -3,387 +3,2208 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>총괄생산계획 최적화</title>
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Noto+Sans+KR:wght@400;500&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<title>SmartQC — 공정능력분석 & 통계적공정관리</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jstat/1.9.6/jstat.min.js"></script>
 <style>
-:root{
-  --bg:#f5f2ee;
-  --card:#fffef9;
-  --card2:#f9f7f3;
-  --border:#e6e1d8;
-  --border2:#d4cec3;
-  --txt:#2d2a24;
-  --txt2:#7a7060;
-  --txt3:#b0a898;
-  --blue:#a8c4e0;
-  --blue-d:#5a8fb5;
-  --blue-bg:#eef4fa;
-  --green:#b0d4b8;
-  --green-d:#4e9460;
-  --green-bg:#eef7f0;
-  --pink:#e8b4c4;
-  --pink-d:#b55474;
-  --pink-bg:#faeef2;
-  --yellow:#e8d8a0;
-  --yellow-d:#9a7c20;
-  --yellow-bg:#faf6e8;
-  --purple:#c8b8e8;
-  --purple-d:#6e52b8;
-  --teal:#a8d4cc;
-  --teal-d:#3a8c7e;
-  --sidebar:272px;
-}
-*{box-sizing:border-box;margin:0;padding:0}
-html,body{height:100%;overflow:hidden}
-body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--txt);font-size:12px;line-height:1.4}
+  :root {
+    --rose:     #F4A7B9;
+    --peach:    #FFCBA4;
+    --lavender: #C9B8E8;
+    --mint:     #A8D8C8;
+    --sky:      #A8D0E6;
+    --butter:   #FFE9A0;
+    --cream:    #FFF8F2;
+    --soft-gray:#F5F0F8;
+    --text:     #3D2B4A;
+    --text-mid: #6B5A7A;
+    --text-light:#9B8AAA;
+    --card-bg:  #FFFBFE;
+    --border:   #EDE4F5;
+    --shadow:   0 4px 24px rgba(120,80,160,0.08);
+    --shadow-lg:0 8px 40px rgba(120,80,160,0.14);
+    --radius:   18px;
+    --radius-sm:10px;
+  }
 
-.layout{display:grid;grid-template-columns:var(--sidebar) 1fr;grid-template-rows:42px 1fr;height:100vh}
+  * { box-sizing: border-box; margin: 0; padding: 0; }
 
-/* topbar */
-.topbar{grid-column:1/-1;background:var(--card);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 14px;gap:10px}
-.topbar-title{font-size:13px;font-weight:500;color:var(--txt)}
-.topbar-badge{font-size:10px;color:var(--txt3);background:var(--card2);border:1px solid var(--border);border-radius:4px;padding:1px 7px;font-family:'IBM Plex Mono',monospace}
-.topbar-r{margin-left:auto;display:flex;align-items:center;gap:8px}
-.run-btn{padding:5px 14px;background:var(--blue-d);color:#fff;border:none;border-radius:5px;font-size:11px;font-weight:500;cursor:pointer;font-family:inherit;transition:opacity .15s}
-.run-btn:hover{opacity:.8}
-.pill{font-size:10px;font-family:'IBM Plex Mono',monospace;padding:2px 8px;border-radius:20px;display:none}
-.pill.ok{background:var(--green-bg);color:var(--green-d);border:1px solid var(--green);display:inline-block}
-.pill.err{background:var(--pink-bg);color:var(--pink-d);border:1px solid var(--pink);display:inline-block}
+  body {
+    font-family: 'Segoe UI', 'Apple SD Gothic Neo', sans-serif;
+    background: var(--cream);
+    color: var(--text);
+    min-height: 100vh;
+  }
 
-/* sidebar */
-.sidebar{background:var(--card);border-right:1px solid var(--border);overflow-y:auto;font-size:11px}
-.s-sec{padding:9px 12px;border-bottom:1px solid var(--border)}
-.s-lbl{font-size:9px;font-weight:500;color:var(--txt3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:7px;display:flex;align-items:center;justify-content:space-between}
-.field{display:flex;align-items:center;gap:6px;margin-bottom:5px}
-.field label{font-size:10px;color:var(--txt2);width:116px;flex-shrink:0;line-height:1.3}
-.field input,.field select{flex:1;padding:3px 6px;border:1px solid var(--border);border-radius:4px;background:var(--bg);color:var(--txt);font-size:11px;font-family:inherit;min-width:0;transition:border .1s}
-.field input:focus,.field select:focus{outline:none;border-color:var(--border2);background:var(--card)}
-.demand-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;margin-bottom:5px}
-.d-cell{display:flex;flex-direction:column;align-items:center;gap:1px}
-.d-cell .dl{font-size:9px;color:var(--txt3);font-family:'IBM Plex Mono',monospace}
-.d-cell input{width:100%;padding:3px 4px;border:1px solid var(--border);border-radius:3px;background:var(--bg);color:var(--txt);font-size:10px;text-align:right;font-family:'IBM Plex Mono',monospace}
-.d-cell input:focus{outline:none;border-color:var(--border2)}
-.d-add{font-size:9px;padding:2px 7px;border:1px dashed var(--border2);border-radius:3px;background:none;cursor:pointer;color:var(--txt3);font-family:inherit}
-.d-add:hover{color:var(--txt2);background:var(--card2)}
-.toggle{display:flex;gap:3px}
-.tog-btn{flex:1;padding:4px;border:1px solid var(--border);border-radius:4px;background:none;font-size:10px;cursor:pointer;color:var(--txt2);font-family:inherit;transition:all .1s}
-.tog-btn.on{background:var(--blue-d);color:#fff;border-color:var(--blue-d)}
+  /* ───── HEADER ───── */
+  header {
+    background: linear-gradient(135deg, #e8d5f5 0%, #d4eaf8 50%, #d5f0e8 100%);
+    padding: 14px 32px 0;
+    border-bottom: 2px solid var(--border);
+  }
+  .header-inner {
+    max-width: 1400px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding-bottom: 12px;
+    flex-wrap: wrap;
+  }
+  .logo {
+    width: 48px; height: 48px;
+    background: linear-gradient(135deg, var(--lavender), var(--rose));
+    border-radius: 14px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 24px; flex-shrink: 0;
+    box-shadow: 0 4px 12px rgba(180,120,200,0.3);
+  }
+  .header-title { flex: 1; }
+  .header-title h1 { font-size: 1.7rem; font-weight: 800; letter-spacing: -0.5px; }
+  .header-title p { color: var(--text-mid); font-size: 0.88rem; margin-top: 2px; }
 
-/* main */
-.main{overflow-y:auto;padding:10px;display:flex;flex-direction:column;gap:8px;background:var(--bg)}
+  /* ───── LIVE STATUS BAR ───── */
+  .status-bar {
+    background: rgba(255,255,255,0.7);
+    border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+    padding: 8px 16px;
+    display: flex; gap: 16px; flex-wrap: wrap;
+    font-size: 0.8rem; color: var(--text-mid);
+  }
+  .status-item { display: flex; align-items: center; gap: 6px; }
+  .status-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--mint);
+    box-shadow: 0 0 6px var(--mint);
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
 
-.row4{display:grid;grid-template-columns:repeat(4,1fr);gap:7px}
-.mcard{background:var(--card);border:1px solid var(--border);border-radius:7px;padding:8px 10px}
-.mcard .ml{font-size:9px;color:var(--txt3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px}
-.mcard .mv{font-size:17px;font-weight:500;font-family:'IBM Plex Mono',monospace;line-height:1}
-.mcard .mu{font-size:9px;color:var(--txt3);margin-left:1px}
-.mcard.ok .mv{color:var(--green-d)}
-.mcard.warn .mv{color:var(--pink-d)}
+  /* ───── NAV TABS ───── */
+  nav {
+    max-width: 1400px; margin: 0 auto;
+    display: flex; gap: 4px; padding: 0 32px;
+    overflow-x: auto;
+  }
+  .tab-btn {
+    padding: 8px 18px;
+    border: none; border-bottom: 3px solid transparent;
+    background: transparent; cursor: pointer;
+    font-size: 0.88rem; font-weight: 600;
+    color: var(--text-mid);
+    white-space: nowrap;
+    transition: all 0.2s;
+    border-radius: 8px 8px 0 0;
+  }
+  .tab-btn:hover { background: rgba(200,170,240,0.2); color: var(--text); }
+  .tab-btn.active {
+    color: #7C3AED;
+    border-bottom-color: #7C3AED;
+    background: rgba(200,170,240,0.3);
+  }
 
-/* accent stripe */
-.mcard.c-blue{border-top:2px solid var(--blue)}
-.mcard.c-green{border-top:2px solid var(--green)}
-.mcard.c-pink{border-top:2px solid var(--pink)}
-.mcard.c-yellow{border-top:2px solid var(--yellow)}
+  /* ───── MAIN LAYOUT ───── */
+  main {
+    max-width: 1400px;
+    margin: 16px auto;
+    padding: 0 20px;
+  }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
 
-.row2{display:grid;grid-template-columns:1fr 1fr;gap:7px}
-.ccard{background:var(--card);border:1px solid var(--border);border-radius:7px;padding:9px 11px}
-.ccard .ct{font-size:9px;font-weight:500;color:var(--txt2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;display:flex;align-items:center;gap:8px}
-.ccard .ch{position:relative;height:130px}
-.leg-row{display:flex;flex-wrap:wrap;gap:7px;margin-left:auto}
-.leg{display:flex;align-items:center;gap:3px;font-size:9px;color:var(--txt3)}
-.ld{width:6px;height:6px;border-radius:1px;flex-shrink:0}
+  /* ───── SECTION HEADERS ───── */
+  .section-title {
+    font-size: 0.95rem; font-weight: 700;
+    color: var(--text);
+    margin-bottom: 10px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .section-title .badge {
+    font-size: 0.72rem; padding: 2px 10px;
+    border-radius: 20px; font-weight: 700;
+    letter-spacing: 0.5px;
+  }
 
-/* cost strip */
-.cost-strip{background:var(--card);border:1px solid var(--border);border-radius:7px;overflow:hidden}
-.cs-title{padding:7px 11px;border-bottom:1px solid var(--border);font-size:9px;font-weight:500;color:var(--txt2);text-transform:uppercase;letter-spacing:.06em}
-.cs-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:0}
-.cs-item{padding:7px 10px;border-right:1px solid var(--border);border-bottom:1px solid var(--border)}
-.cs-item:nth-child(4n){border-right:none}
-.cs-item:nth-last-child(-n+4){border-bottom:none}
-.cs-lbl{font-size:9px;color:var(--txt3);margin-bottom:2px}
-.cs-val{font-size:12px;font-weight:500;font-family:'IBM Plex Mono',monospace;color:var(--txt)}
+  /* ───── CARDS ───── */
+  .card {
+    background: var(--card-bg);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+    box-shadow: var(--shadow);
+  }
+  .card-row {
+    display: grid;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+  .card-row.cols-2 { grid-template-columns: repeat(2, 1fr); }
+  .card-row.cols-3 { grid-template-columns: repeat(3, 1fr); }
+  .card-row.cols-4 { grid-template-columns: repeat(4, 1fr); }
+  .card-row.cols-1-2 { grid-template-columns: 1fr 2fr; }
+  .card-row.cols-2-1 { grid-template-columns: 2fr 1fr; }
 
-/* table */
-.tcard{background:var(--card);border:1px solid var(--border);border-radius:7px;overflow:hidden}
-.th-row{padding:7px 11px;border-bottom:1px solid var(--border);font-size:9px;font-weight:500;color:var(--txt2);text-transform:uppercase;letter-spacing:.06em}
-.tscroll{overflow-x:auto}
-table{width:100%;border-collapse:collapse;font-size:10px}
-th{padding:4px 8px;text-align:right;font-weight:500;color:var(--txt3);border-bottom:1px solid var(--border);background:var(--card2);white-space:nowrap;font-size:9px}
-th:first-child{text-align:left;padding-left:11px}
-td{padding:3px 8px;text-align:right;border-bottom:1px solid var(--border);color:var(--txt2);font-family:'IBM Plex Mono',monospace;white-space:nowrap}
-td:first-child{text-align:left;font-family:'Noto Sans KR',sans-serif;font-weight:500;color:var(--txt);padding-left:11px;font-size:10px}
-tr:last-child td{border-bottom:none}
-.tw{color:var(--yellow-d)}
-.td{color:var(--pink-d)}
+  /* ───── FORM ELEMENTS ───── */
+  label { display: block; font-size: 0.78rem; font-weight: 600; color: var(--text-mid); margin-bottom: 4px; }
+  input[type=number], input[type=text], select, textarea {
+    width: 100%; padding: 7px 10px;
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: #fff;
+    font-size: 0.88rem; color: var(--text);
+    outline: none; transition: border 0.2s;
+  }
+  input:focus, select:focus, textarea:focus {
+    border-color: #A78BFA;
+    box-shadow: 0 0 0 3px rgba(167,139,250,0.15);
+  }
+  textarea { resize: vertical; min-height: 64px; font-family: 'Courier New', monospace; font-size: 0.8rem; }
 
-.empty{display:flex;align-items:center;justify-content:center;height:60vh;flex-direction:column;gap:6px}
-.ei{font-size:24px;opacity:.2}
-.et{font-size:11px;color:var(--txt3)}
+  /* ───── BUTTONS ───── */
+  .btn {
+    padding: 10px 22px;
+    border: none; border-radius: var(--radius-sm);
+    font-size: 0.9rem; font-weight: 700;
+    cursor: pointer; transition: all 0.2s;
+    display: inline-flex; align-items: center; gap: 6px;
+  }
+  .btn-primary {
+    background: linear-gradient(135deg, #A78BFA, #7C3AED);
+    color: white;
+    box-shadow: 0 4px 14px rgba(124,58,237,0.3);
+  }
+  .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(124,58,237,0.4); }
+  .btn-secondary {
+    background: linear-gradient(135deg, var(--sky), #5BA0C8);
+    color: white;
+    box-shadow: 0 4px 14px rgba(91,160,200,0.3);
+  }
+  .btn-mint {
+    background: linear-gradient(135deg, var(--mint), #5BB899);
+    color: white;
+    box-shadow: 0 4px 14px rgba(91,184,153,0.3);
+  }
+  .btn-peach {
+    background: linear-gradient(135deg, var(--peach), #E8935A);
+    color: white;
+    box-shadow: 0 4px 14px rgba(232,147,90,0.3);
+  }
+  .btn-sm { padding: 6px 14px; font-size: 0.82rem; }
+  .btn:active { transform: scale(0.97); }
 
-::-webkit-scrollbar{width:3px;height:3px}
-::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+  /* ───── KPI CHIPS ───── */
+  .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; }
+  .kpi-chip {
+    border-radius: 14px;
+    padding: 14px 16px;
+    text-align: center;
+    border: 1.5px solid transparent;
+  }
+  .kpi-chip .kpi-val { font-size: 1.6rem; font-weight: 800; line-height: 1; }
+  .kpi-chip .kpi-label { font-size: 0.75rem; color: var(--text-mid); margin-top: 4px; }
+  .kpi-chip .kpi-status { font-size: 0.68rem; font-weight: 700; margin-top: 4px; padding: 2px 8px; border-radius: 10px; display: inline-block; }
+
+  .kpi-lavender { background: linear-gradient(135deg, #EDE5FF, #F5EFFF); border-color: var(--lavender); }
+  .kpi-mint     { background: linear-gradient(135deg, #DFF5EE, #EEFAF5); border-color: var(--mint); }
+  .kpi-peach    { background: linear-gradient(135deg, #FFF0E6, #FFF7F0); border-color: var(--peach); }
+  .kpi-sky      { background: linear-gradient(135deg, #E4F2FA, #EEF7FD); border-color: var(--sky); }
+  .kpi-rose     { background: linear-gradient(135deg, #FFE8EE, #FFF2F5); border-color: var(--rose); }
+  .kpi-butter   { background: linear-gradient(135deg, #FFF8D6, #FFFCE8); border-color: var(--butter); }
+
+  .status-ok   { background: #D1FAE5; color: #065F46; }
+  .status-warn { background: #FEF3C7; color: #92400E; }
+  .status-fail { background: #FEE2E2; color: #991B1B; }
+
+  /* ───── CHART WRAPPER ───── */
+  .chart-wrap {
+    position: relative;
+    background: white;
+    border-radius: var(--radius-sm);
+    border: 1.5px solid var(--border);
+    padding: 16px;
+  }
+  .chart-wrap canvas { max-height: 280px; }
+  .chart-title {
+    font-size: 0.82rem; font-weight: 700;
+    color: var(--text-mid);
+    margin-bottom: 8px;
+    display: flex; align-items: center; gap: 6px;
+  }
+
+  /* ───── ALERT BADGES ───── */
+  .alert-box {
+    border-radius: var(--radius-sm);
+    padding: 12px 16px;
+    font-size: 0.85rem;
+    margin-top: 12px;
+    border-left: 4px solid;
+  }
+  .alert-success { background: #F0FDF4; border-color: #22C55E; color: #166534; }
+  .alert-warning { background: #FFFBEB; border-color: #F59E0B; color: #92400E; }
+  .alert-danger  { background: #FFF5F5; border-color: #EF4444; color: #991B1B; }
+  .alert-info    { background: #EFF6FF; border-color: #3B82F6; color: #1D4ED8; }
+
+  /* ───── VIOLATION TIMELINE ───── */
+  .violation-list { display: flex; flex-direction: column; gap: 6px; max-height: 200px; overflow-y: auto; }
+  .violation-item {
+    display: flex; align-items: center; gap: 10px;
+    background: var(--soft-gray);
+    padding: 8px 12px; border-radius: 8px;
+    font-size: 0.8rem;
+  }
+  .v-icon { font-size: 1.1rem; }
+  .v-rule { font-weight: 700; color: #7C3AED; }
+  .v-point { color: var(--text-mid); }
+
+  /* ───── DATA TABLE ───── */
+  .data-table-wrap { overflow-x: auto; max-height: 260px; overflow-y: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+  th {
+    background: linear-gradient(135deg, #EDE5FF, #E4F2FA);
+    color: var(--text);
+    font-weight: 700;
+    padding: 8px 12px; text-align: left;
+    position: sticky; top: 0; z-index: 2;
+    border-bottom: 2px solid var(--border);
+  }
+  td {
+    padding: 7px 12px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+  }
+  tr:hover td { background: var(--soft-gray); }
+  .td-ooc { background: #FFF5F5 !important; color: #DC2626; font-weight: 700; }
+
+  /* ───── SPARKLINE ───── */
+  .sparkline-row { display: flex; gap: 8px; align-items: center; padding: 4px 0; }
+  .sparkline-label { font-size: 0.78rem; color: var(--text-mid); width: 60px; flex-shrink: 0; }
+  .sparkline-bar-wrap { flex: 1; height: 12px; background: var(--border); border-radius: 6px; overflow: hidden; }
+  .sparkline-bar { height: 100%; border-radius: 6px; transition: width 0.6s ease; }
+
+  /* ───── NELSON RULE DISPLAY ───── */
+  .rule-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
+  .rule-card {
+    border-radius: 10px; padding: 10px 12px;
+    border: 1.5px solid var(--border);
+    background: white;
+    font-size: 0.78rem;
+    transition: all 0.2s;
+  }
+  .rule-card.triggered {
+    background: #FFF5F5; border-color: #FCA5A5;
+  }
+  .rule-card .rule-num { font-weight: 800; color: #7C3AED; font-size: 0.9rem; }
+  .rule-card .rule-desc { color: var(--text-mid); margin-top: 3px; line-height: 1.4; }
+  .rule-card .rule-hit {
+    margin-top: 6px; font-weight: 700;
+    color: #DC2626; font-size: 0.75rem;
+  }
+
+  /* ───── GAUGE ───── */
+  .gauge-wrap { text-align: center; }
+  .gauge-svg { width: 140px; height: 80px; }
+
+  /* ───── FOOTER ───── */
+  .divider { height: 1px; background: var(--border); margin: 20px 0; }
+
+  /* ───── TOOLTIP ───── */
+  .tooltip-wrap { position: relative; display: inline-block; }
+  .tooltip-icon { cursor: help; color: var(--lavender); font-size: 0.9rem; }
+  .tooltip-text {
+    visibility: hidden; opacity: 0;
+    width: 220px;
+    background: var(--text); color: white;
+    font-size: 0.76rem; padding: 8px 12px;
+    border-radius: 8px;
+    position: absolute; z-index: 100;
+    bottom: 130%; left: 50%; transform: translateX(-50%);
+    transition: opacity 0.2s;
+    line-height: 1.5;
+  }
+  .tooltip-wrap:hover .tooltip-text { visibility: visible; opacity: 1; }
+
+  /* ───── RESPONSIVE ───── */
+  @media (max-width: 768px) {
+    .card-row.cols-2, .card-row.cols-3, .card-row.cols-4,
+    .card-row.cols-1-2, .card-row.cols-2-1 { grid-template-columns: 1fr; }
+    main { padding: 0 12px; }
+    header { padding: 16px 16px 0; }
+  }
+
+  /* ───── ANIMATE ───── */
+  .fade-in { animation: fadeIn 0.35s ease; }
+  @keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:none} }
+
+  /* ───── PROCESS MAP ───── */
+  .process-map {
+    display: flex; gap: 0; align-items: center;
+    background: white; border-radius: var(--radius-sm);
+    border: 1.5px solid var(--border); overflow: hidden;
+  }
+  .pm-step {
+    flex: 1; padding: 10px 8px; text-align: center;
+    font-size: 0.75rem; font-weight: 700;
+    position: relative;
+    transition: background 0.2s;
+  }
+  .pm-step:not(:last-child)::after {
+    content: '→';
+    position: absolute; right: -8px; top: 50%; transform: translateY(-50%);
+    color: var(--text-light); z-index: 2;
+    font-size: 1rem;
+  }
+  .pm-step.active { background: linear-gradient(135deg, #EDE5FF, #F5EFFF); color: #7C3AED; }
+  .pm-step .pm-icon { font-size: 1.3rem; }
+
+  /* ───── SCROLLBAR ───── */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--lavender); border-radius: 4px; }
+
+  /* ───── FILE DROP ───── */
+  .drop-zone {
+    border: 2.5px dashed var(--lavender);
+    border-radius: var(--radius);
+    padding: 12px 16px; text-align: center;
+    background: linear-gradient(135deg, #F9F5FF, #F0F9FF);
+    cursor: pointer; transition: all 0.2s;
+  }
+  .drop-zone:hover, .drop-zone.dragover {
+    border-color: #7C3AED;
+    background: linear-gradient(135deg, #F0E8FF, #E4F2FA);
+  }
+  .drop-zone .dz-icon { font-size: 2.5rem; }
+  .drop-zone p { color: var(--text-mid); font-size: 0.88rem; margin-top: 8px; }
+
+  /* ───── SIMULATION DIAL ───── */
+  .sim-param { margin-bottom: 14px; }
+  .sim-param label { display: flex; justify-content: space-between; align-items: center; }
+  .sim-param .val-badge {
+    background: var(--lavender); color: white;
+    padding: 1px 8px; border-radius: 10px;
+    font-size: 0.75rem; font-weight: 700;
+  }
+  input[type=range] {
+    width: 100%; height: 4px;
+    accent-color: #7C3AED;
+    cursor: pointer;
+  }
+
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+  @media (max-width: 600px) { .grid-2, .grid-3 { grid-template-columns: 1fr; } }
+
+  /* ═══ COMPARE TAB ═══ */
+  .compare-split {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 20px;
+  }
+  @media(max-width:760px){ .compare-split{ grid-template-columns:1fr; } }
+
+  .compare-panel {
+    background: var(--card-bg);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    box-shadow: var(--shadow);
+  }
+  .compare-panel.before { border-top: 4px solid #A78BFA; }
+  .compare-panel.after  { border-top: 4px solid #2DD4BF; }
+
+  .panel-badge {
+    display: inline-block;
+    font-size: 0.72rem; font-weight: 800; letter-spacing: 0.8px;
+    padding: 3px 10px; border-radius: 20px; margin-bottom: 12px;
+  }
+  .badge-before { background: #EDE5FF; color: #7C3AED; }
+  .badge-after  { background: #CCFBF1; color: #0D9488; }
+
+  /* Delta KPI strip */
+  .delta-strip {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+  @media(max-width:760px){ .delta-strip{ grid-template-columns:1fr 1fr; } }
+
+  .delta-card {
+    background: var(--card-bg);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    text-align: center;
+    box-shadow: var(--shadow);
+    position: relative;
+    overflow: hidden;
+  }
+  .delta-card::before {
+    content: '';
+    position: absolute; top: 0; left: 0; right: 0; height: 3px;
+  }
+  .delta-card.improved::before { background: #22C55E; }
+  .delta-card.degraded::before { background: #EF4444; }
+  .delta-card.neutral::before  { background: var(--border); }
+
+  .delta-metric { font-size: 0.72rem; font-weight: 700; color: var(--text-mid); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+
+  .delta-row { display: flex; justify-content: center; align-items: center; gap: 6px; }
+  .delta-before { font-size: 1rem; font-weight: 700; color: var(--text-light); }
+  .delta-arrow { font-size: 1.1rem; }
+  .delta-after  { font-size: 1.1rem; font-weight: 800; color: var(--text); }
+
+  .delta-change {
+    margin-top: 5px; font-size: 0.75rem; font-weight: 800;
+    padding: 2px 8px; border-radius: 10px; display: inline-block;
+  }
+  .delta-change.pos { background: #D1FAE5; color: #065F46; }
+  .delta-change.neg { background: #FEE2E2; color: #991B1B; }
+  .delta-change.neu { background: var(--border); color: var(--text-mid); }
+
+  /* Overlay chart */
+  .overlay-card {
+    background: var(--card-bg);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    box-shadow: var(--shadow);
+    margin-bottom: 20px;
+  }
+  .overlay-legend {
+    display: flex; gap: 20px; flex-wrap: wrap;
+    margin-bottom: 14px;
+  }
+  .legend-item { display: flex; align-items: center; gap: 6px; font-size: 0.82rem; }
+  .legend-dot { width: 12px; height: 12px; border-radius: 3px; }
+
+  /* Narrative insight box */
+  .insight-box {
+    background: linear-gradient(135deg, #F5F0FF, #F0FBFF);
+    border: 1.5px solid #D8D0F8;
+    border-radius: var(--radius);
+    padding: 16px 20px;
+    margin-bottom: 20px;
+  }
+  .insight-box h4 { font-size: 0.88rem; font-weight: 700; margin-bottom: 8px; color: #5B21B6; }
+  .insight-list { list-style: none; display: flex; flex-direction: column; gap: 6px; }
+  .insight-list li { font-size: 0.83rem; color: var(--text); display: flex; gap: 8px; align-items: flex-start; line-height: 1.5; }
+  .insight-list li .iico { flex-shrink: 0; }
+
+  /* Snapshot save */
+  .snapshot-bar {
+    display: flex; align-items: center; gap: 10px;
+    background: var(--soft-gray);
+    border-radius: var(--radius-sm);
+    padding: 10px 14px;
+    margin-bottom: 16px;
+    font-size: 0.82rem; color: var(--text-mid);
+    flex-wrap: wrap;
+  }
+  .snapshot-item {
+    background: var(--card-bg);
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    padding: 6px 12px;
+    font-size: 0.78rem;
+    display: flex; align-items: center; gap: 6px;
+    cursor: pointer; transition: border 0.2s;
+  }
+  .snapshot-item:hover { border-color: #A78BFA; }
+  .snapshot-item.active-snap { border-color: #7C3AED; background: #EDE5FF; font-weight: 700; color: #7C3AED; }
+  .snap-dot { width: 8px; height: 8px; border-radius: 50%; }
+
 </style>
 </head>
 <body>
-<div class="layout">
 
-<header class="topbar">
-  <span class="topbar-title">총괄생산계획 최적화</span>
-  <span class="topbar-badge">APP · 원예장비</span>
-  <div class="topbar-r">
-    <span id="pill" class="pill"></span>
+<!-- ═══════════════════════ HEADER ═══════════════════════ -->
+<header>
+  <div class="header-inner">
+    <div class="logo">🔬</div>
+    <div class="header-title">
+      <h1>SmartQC Studio</h1>
+      <p>공정능력분석(Cp, Cpk, Pp, Ppk) + 통계적공정관리(SPC) 통합 플랫폼</p>
+    </div>
+    <div class="status-bar" style="border-radius:var(--radius-sm); padding:8px 16px; display:flex; gap:16px; background:rgba(255,255,255,0.6);">
+      <div class="status-item"><div class="status-dot"></div><span id="dataCountStatus">데이터 대기중</span></div>
+      <div class="status-item">🕐 <span id="clock"></span></div>
+    </div>
   </div>
+  <nav>
+    <button class="tab-btn active" onclick="switchTab('home')">🏠 대시보드</button>
+    <button class="tab-btn" onclick="switchTab('capability')">📊 공정능력분석</button>
+    <button class="tab-btn" onclick="switchTab('spc')">📈 관리도(SPC)</button>
+    <button class="tab-btn" onclick="switchTab('simulate')">🎲 시뮬레이터</button>
+    <button class="tab-btn" onclick="switchTab('guide')">📖 분석 가이드</button>
+    <button class="tab-btn" onclick="switchTab('compare')">⚡ Before / After</button>
+  </nav>
 </header>
 
-<aside class="sidebar">
-  <div class="s-sec">
-    <div class="s-lbl">모델</div>
-    <div class="toggle">
-      <button class="tog-btn on" id="btn-lp" onclick="setT('LP')">LP 연속</button>
-      <button class="tog-btn" id="btn-ip" onclick="setT('IP')">IP 정수</button>
+<main>
+
+<!-- ═══════════════════════ HOME ═══════════════════════ -->
+<div id="tab-home" class="tab-panel active fade-in">
+
+  <div class="card-row cols-1-2">
+    <!-- Quick Input -->
+    <div class="card">
+      <div class="section-title">
+        📥 빠른 데이터 입력
+        <span class="badge" style="background:#EDE5FF;color:#7C3AED;">필수</span>
+      </div>
+
+      <div class="drop-zone" id="dropZone" onclick="document.getElementById('csvFile').click()"
+           ondragover="event.preventDefault();this.classList.add('dragover')"
+           ondragleave="this.classList.remove('dragover')"
+           ondrop="handleDrop(event)"
+           style="padding:12px 16px;">
+        <div class="dz-icon" style="font-size:1.4rem;">📂</div>
+        <p style="font-size:0.78rem;margin-top:2px;">CSV 드래그 & 드롭 또는 클릭</p>
+        <input type="file" id="csvFile" accept=".csv,.txt" style="display:none" onchange="loadCSV(event)">
+      </div>
+
+      <div>
+        <label>데이터 입력 (쉼표 또는 줄바꿈으로 구분)</label>
+        <textarea id="rawData" placeholder="10.2, 9.8, 10.1, 10.5 ..." style="min-height:60px;"></textarea>
+      </div>
+
+      <div class="grid-2" style="margin-top:8px;">
+        <div>
+          <label>규격 하한 (LSL)</label>
+          <input type="number" id="lsl" value="9.5" step="0.1">
+        </div>
+        <div>
+          <label>규격 상한 (USL)</label>
+          <input type="number" id="usl" value="10.5" step="0.1">
+        </div>
+      </div>
+
+      <div class="grid-2" style="margin-top:8px;">
+        <div>
+          <label>부분군 크기 (n)</label>
+          <input type="number" id="sgSize" value="1" min="1" max="25">
+        </div>
+        <div>
+          <label>그룹 / 측정값 컬럼</label>
+          <div style="display:flex;gap:4px;">
+            <input type="text" id="sgColName" value="group" style="width:50%;">
+            <input type="text" id="valColName" value="value" style="width:50%;">
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="btn btn-primary" onclick="runAnalysis()">🚀 분석 실행</button>
+        <button class="btn btn-secondary btn-sm" onclick="loadSampleData()">🎯 샘플</button>
+        <button class="btn btn-sm" style="background:var(--border);color:var(--text-mid);" onclick="clearAll()">🗑</button>
+      </div>
+    </div>
+
+    <!-- Dashboard Summary -->
+    <div class="card">
+      <div class="section-title">📊 분석 요약</div>
+      <div class="kpi-grid" id="kpiGrid" style="margin-bottom:12px;">
+        <div class="kpi-chip kpi-lavender" style="padding:10px 12px;">
+          <div class="kpi-val" id="kpi-n" style="font-size:1.3rem;">—</div>
+          <div class="kpi-label">데이터 수</div>
+        </div>
+        <div class="kpi-chip kpi-mint" style="padding:10px 12px;">
+          <div class="kpi-val" id="kpi-mean" style="font-size:1.3rem;">—</div>
+          <div class="kpi-label">평균 (x̄)</div>
+        </div>
+        <div class="kpi-chip kpi-sky" style="padding:10px 12px;">
+          <div class="kpi-val" id="kpi-std" style="font-size:1.3rem;">—</div>
+          <div class="kpi-label">표준편차 (σ)</div>
+        </div>
+        <div class="kpi-chip kpi-peach" style="padding:10px 12px;">
+          <div class="kpi-val" id="kpi-cp" style="font-size:1.3rem;">—</div>
+          <div class="kpi-label">Cp</div>
+          <div class="kpi-status" id="kpi-cp-status">—</div>
+        </div>
+        <div class="kpi-chip kpi-rose" style="padding:10px 12px;">
+          <div class="kpi-val" id="kpi-cpk" style="font-size:1.3rem;">—</div>
+          <div class="kpi-label">Cpk</div>
+          <div class="kpi-status" id="kpi-cpk-status">—</div>
+        </div>
+        <div class="kpi-chip kpi-butter" style="padding:10px 12px;">
+          <div class="kpi-val" id="kpi-ooc" style="font-size:1.3rem;">—</div>
+          <div class="kpi-label">규격 이탈</div>
+        </div>
+      </div>
+
+      <div class="chart-wrap">
+        <div class="chart-title">📉 분포 미리보기</div>
+        <canvas id="histPreview" style="max-height:180px;"></canvas>
+      </div>
+
+      <div id="homeAlert" style="margin-top:10px;"></div>
     </div>
   </div>
-  <div class="s-sec">
-    <div class="s-lbl">월별 수요 <button class="d-add" onclick="addM()">+ 월</button></div>
-    <div class="demand-grid" id="dgrid"></div>
-  </div>
-  <div class="s-sec">
-    <div class="s-lbl">초기값</div>
-    <div class="field"><label>초기 재고 I₀ (개)</label><input type="number" id="I0" value="1000"></div>
-    <div class="field"><label>최종 목표재고 (개)</label><input type="number" id="Ie" value="500"></div>
-    <div class="field"><label>초기 종업원 W₀ (명)</label><input type="number" id="W0" value="80"></div>
-    <div class="field"><label>표준시간 (h/개)</label><input type="number" id="std" value="4" step="0.5"></div>
-  </div>
-  <div class="s-sec">
-    <div class="s-lbl">비용 파라미터</div>
-    <div class="field"><label>정규임금 (원/h)</label><input type="number" id="reg" value="4000"></div>
-    <div class="field"><label>초과임금 (원/h)</label><input type="number" id="otw" value="6000"></div>
-    <div class="field"><label>고용비 (천원/인)</label><input type="number" id="hire" value="300"></div>
-    <div class="field"><label>해고비 (천원/인)</label><input type="number" id="fire" value="500"></div>
-    <div class="field"><label>재고유지비 (천원/개)</label><input type="number" id="inv" value="2"></div>
-    <div class="field"><label>부재고비 (천원/개)</label><input type="number" id="back" value="5"></div>
-    <div class="field"><label>재료비 (천원/개)</label><input type="number" id="mat" value="10"></div>
-    <div class="field"><label>하청비 (천원/개)</label><input type="number" id="sub" value="30"></div>
-  </div>
-  <div class="s-sec">
-    <div class="s-lbl">작업</div>
-    <div class="field"><label>작업일수 (일/월)</label><input type="number" id="days" value="20"></div>
-    <div class="field"><label>작업시간 (h/일)</label><input type="number" id="hrs" value="8"></div>
-    <div class="field"><label>초과시간 제한 (h/인)</label><input type="number" id="otl" value="10"></div>
-  </div>
-  <div class="s-sec">
-    <button class="run-btn" onclick="run()" style="width:100%;padding:8px;font-size:12px;border-radius:6px">▶ 최적화 실행</button>
-  </div>
-</aside>
-
-<main class="main" id="main">
-  <div class="empty"><div class="ei">📋</div><div class="et">파라미터 확인 후 실행하세요</div></div>
-</main>
-
 </div>
-<script>
-let D=[1600,3000,3200,3800,2200,2200],mtype='LP',CH={};
 
-function setT(t){mtype=t;document.getElementById('btn-lp').classList.toggle('on',t==='LP');document.getElementById('btn-ip').classList.toggle('on',t==='IP');}
+<!-- ═══════════════════════ CAPABILITY ═══════════════════════ -->
+<div id="tab-capability" class="tab-panel fade-in">
 
-function rdg(){
-  const c=document.getElementById('dgrid');c.innerHTML='';
-  D.forEach((d,i)=>{
-    const el=document.createElement('div');el.className='d-cell';
-    el.innerHTML=`<span class="dl">${i+1}월</span><input type="number" value="${d}" min="0" onchange="D[${i}]=Math.max(0,+this.value)">`;
-    c.appendChild(el);
-  });
-}
-function addM(){if(D.length<12){D.push(2000);rdg();}}
-rdg();
-
-function gv(id){return parseFloat(document.getElementById(id).value)||0;}
-function fm(v){return Math.round(v).toLocaleString('ko-KR');}
-
-function simplex(c,Aub,bub,Aeq,beq){
-  const n=c.length,mu=Aub.length,me=Aeq.length,BIG=1e8,nv=n+mu+me,nm=mu+me;
-  let tab=[];
-  for(let i=0;i<mu;i++){let r=new Array(nv+1).fill(0);for(let j=0;j<n;j++)r[j]=Aub[i][j];r[n+i]=1;r[nv]=bub[i];tab.push(r);}
-  for(let i=0;i<me;i++){let r=new Array(nv+1).fill(0);for(let j=0;j<n;j++)r[j]=Aeq[i][j];r[n+mu+i]=1;r[nv]=beq[i];tab.push(r);}
-  let ob=new Array(nv+1).fill(0);
-  for(let j=0;j<n;j++)ob[j]=c[j];
-  for(let j=n+mu;j<nv;j++)ob[j]=BIG;
-  tab.push(ob);
-  const bs=[];for(let i=0;i<mu;i++)bs.push(n+i);for(let i=0;i<me;i++)bs.push(n+mu+i);
-  for(let i=mu;i<nm;i++){const r=tab[i];for(let j=0;j<=nv;j++)tab[nm][j]-=BIG*r[j];}
-  for(let it=0;it<3000;it++){
-    let pv=-1;for(let j=0;j<nv;j++)if(tab[nm][j]<-1e-7){pv=j;break;}
-    if(pv<0)break;
-    let lr=-1,mr=Infinity;
-    for(let i=0;i<nm;i++)if(tab[i][pv]>1e-8){const r=tab[i][nv]/tab[i][pv];if(r<mr){mr=r;lr=i;}}
-    if(lr<0)return null;
-    bs[lr]=pv;const p=tab[lr][pv];
-    for(let j=0;j<=nv;j++)tab[lr][j]/=p;
-    for(let i=0;i<=nm;i++){if(i===lr)continue;const f=tab[i][pv];if(Math.abs(f)<1e-12)continue;for(let j=0;j<=nv;j++)tab[i][j]-=f*tab[lr][j];}
-  }
-  const x=new Array(n).fill(0);for(let i=0;i<nm;i++)if(bs[i]<n)x[bs[i]]=Math.max(0,tab[i][nv]);
-  return{x};
-}
-
-function solve(demand,p,ip){
-  const T=demand.length,nv=8*T;
-  const iv=(t,off)=>off+T*(t>0?{W:0,H:1,L:2,P:3,I:4,S:5,C:6,O:7}[t[0]]:0)+(+t.slice(1)||0)-1;
-  // simpler index
-  const I=(type,t)=>{const o={W:0,H:1,L:2,P:3,I:4,S:5,C:6,O:7};return o[type]*T+(t-1);};
-  const rc=p.reg*p.hrs*p.days/1000,oc=p.otw/1000,uc=p.hrs*p.days/p.std;
-  const co=new Array(nv).fill(0);
-  for(let t=1;t<=T;t++){co[I('W',t)]+=rc;co[I('O',t)]+=oc;co[I('H',t)]+=p.hire;co[I('L',t)]+=p.fire;co[I('I',t)]+=p.inv;co[I('S',t)]+=p.back;co[I('P',t)]+=p.mat;co[I('C',t)]+=p.sub;}
-  const Au=[],bu=[],Ae=[],be=[];
-  for(let t=1;t<=T;t++){const r=new Array(nv).fill(0);r[I('P',t)]=1;r[I('W',t)]=-uc;r[I('O',t)]=-1/p.std;Au.push(r);bu.push(0);}
-  for(let t=1;t<=T;t++){const r=new Array(nv).fill(0);r[I('O',t)]=1;r[I('W',t)]=-p.otl;Au.push(r);bu.push(0);}
-  {const r=new Array(nv).fill(0);r[I('I',T)]=-1;Au.push(r);bu.push(-p.Ie);}
-  for(let t=1;t<=T;t++){const r=new Array(nv).fill(0);r[I('W',t)]=1;r[I('H',t)]=-1;r[I('L',t)]=1;if(t>1)r[I('W',t-1)]=-1;Ae.push(r);be.push(t===1?p.W0:0);}
-  for(let t=1;t<=T;t++){const r=new Array(nv).fill(0);r[I('I',t)]=1;r[I('P',t)]=-1;r[I('C',t)]=-1;r[I('S',t)]=1;if(t>1){r[I('I',t-1)]=-1;r[I('S',t-1)]=-1;}Ae.push(r);be.push(t===1?p.I0-demand[0]:-demand[t-1]);}
-  {const r=new Array(nv).fill(0);r[I('S',T)]=1;Ae.push(r);be.push(0);}
-  const res=simplex(co,Au,bu,Ae,be);if(!res)return null;
-  const x=res.x,rn=v=>Math.max(0,Math.round(v));
-  const get=(type,t)=>ip?rn(x[I(type,t)]):Math.max(0,x[I(type,t)]);
-  const W=[p.W0,...Array.from({length:T},(_,i)=>get('W',i+1))];
-  const H=[null,...Array.from({length:T},(_,i)=>get('H',i+1))];
-  const L=[null,...Array.from({length:T},(_,i)=>get('L',i+1))];
-  const P=[null,...Array.from({length:T},(_,i)=>get('P',i+1))];
-  const Iv=[p.I0,...Array.from({length:T},(_,i)=>get('I',i+1))];
-  const S=[0,...Array.from({length:T},(_,i)=>get('S',i+1))];
-  const C=[null,...Array.from({length:T},(_,i)=>get('C',i+1))];
-  const O=[null,...Array.from({length:T},(_,i)=>get('O',i+1))];
-  const cs={labor:0,overtime:0,hiring:0,layoff:0,inventory:0,backlog:0,material:0,subcontract:0};
-  for(let t=1;t<=T;t++){cs.labor+=rc*(W[t]||0);cs.overtime+=oc*(O[t]||0);cs.hiring+=p.hire*(H[t]||0);cs.layoff+=p.fire*(L[t]||0);cs.inventory+=p.inv*(Iv[t]||0);cs.backlog+=p.back*(S[t]||0);cs.material+=p.mat*(P[t]||0);cs.subcontract+=p.sub*(C[t]||0);}
-  return{W,H,L,P,I:Iv,S,C,O,D:demand,cost:Object.values(cs).reduce((a,b)=>a+b,0),cs,T,p};
-}
-
-function run(){
-  document.querySelectorAll('#dgrid input').forEach((el,i)=>{D[i]=Math.max(0,+el.value);});
-  const p={I0:gv('I0'),Ie:gv('Ie'),W0:gv('W0'),std:gv('std'),reg:gv('reg'),otw:gv('otw'),hire:gv('hire'),fire:gv('fire'),inv:gv('inv'),back:gv('back'),mat:gv('mat'),sub:gv('sub'),days:gv('days'),hrs:gv('hrs'),otl:gv('otl')};
-  const pill=document.getElementById('pill');
-  const r=solve(D,p,mtype==='IP');
-  if(!r){pill.className='pill err';pill.textContent='최적해 없음';return;}
-  pill.className='pill ok';pill.textContent=`${fm(r.cost)} 천원`;
-  draw(r,p);
-}
-
-function draw(r,p){
-  Object.values(CH).forEach(c=>c.destroy());CH={};
-  const L=Array.from({length:r.T},(_,i)=>`${i+1}월`);
-  const tb=r.S.slice(1).reduce((a,b)=>a+b,0);
-  const cn={labor:'정규노동',overtime:'초과노동',hiring:'고용',layoff:'해고',inventory:'재고유지',backlog:'부재고',material:'재료비',subcontract:'하청'};
-  const PAL=['#a8c4e0','#c8b8e8','#b0d4b8','#e8b4c4','#e8d8a0','#a8d4cc','#d4c0a8','#c8d4a0'];
-
-  document.getElementById('main').innerHTML=`
-  <div class="row4">
-    <div class="mcard c-blue"><div class="ml">총 최소비용</div><div class="mv">${fm(r.cost)}<span class="mu">천원</span></div></div>
-    <div class="mcard c-yellow"><div class="ml">계획 기간</div><div class="mv">${r.T}<span class="mu">개월</span></div></div>
-    <div class="mcard c-green"><div class="ml">최대 종업원</div><div class="mv">${fm(Math.max(...r.W.slice(1)))}<span class="mu">명</span></div></div>
-    <div class="mcard c-pink ${tb>0?'warn':'ok'}"><div class="ml">누적 부재고</div><div class="mv">${fm(tb)}<span class="mu">개</span></div></div>
-  </div>
-
-  <div class="row2">
-    <div class="ccard">
-      <div class="ct">수요 vs 생산
-        <div class="leg-row">
-          <span class="leg"><span class="ld" style="background:#6a7060"></span>수요</span>
-          <span class="leg"><span class="ld" style="background:#a8c4e0"></span>생산</span>
-          <span class="leg"><span class="ld" style="background:#e8d8a0"></span>하청</span>
-        </div>
-      </div>
-      <div class="ch"><canvas id="c1" role="img" aria-label="수요 대비 생산량 차트"></canvas></div>
+  <!-- Cp/Cpk KPI Row -->
+  <div class="card-row cols-4" style="margin-bottom:16px;">
+    <div class="kpi-chip kpi-lavender card">
+      <div class="kpi-val" id="cap-cp">—</div>
+      <div class="kpi-label">Cp (단기, 산포만)</div>
+      <div class="kpi-status" id="cap-cp-s">미분석</div>
     </div>
-    <div class="ccard">
-      <div class="ct">재고 추이
-        <div class="leg-row">
-          <span class="leg"><span class="ld" style="background:#a8d4cc"></span>재고</span>
-          <span class="leg"><span class="ld" style="background:#e8b4c4"></span>부재고</span>
-        </div>
-      </div>
-      <div class="ch"><canvas id="c2" role="img" aria-label="재고 및 부재고 추이"></canvas></div>
+    <div class="kpi-chip kpi-rose card">
+      <div class="kpi-val" id="cap-cpk">—</div>
+      <div class="kpi-label">Cpk (단기, 중심+산포)</div>
+      <div class="kpi-status" id="cap-cpk-s">미분석</div>
     </div>
-    <div class="ccard">
-      <div class="ct">인력 계획
-        <div class="leg-row">
-          <span class="leg"><span class="ld" style="background:#c8b8e8"></span>종업원</span>
-          <span class="leg"><span class="ld" style="background:#b0d4b8"></span>고용</span>
-          <span class="leg"><span class="ld" style="background:#e8b4c4"></span>해고</span>
-        </div>
-      </div>
-      <div class="ch"><canvas id="c3" role="img" aria-label="인력 계획 차트"></canvas></div>
+    <div class="kpi-chip kpi-mint card">
+      <div class="kpi-val" id="cap-pp">—</div>
+      <div class="kpi-label">Pp (장기, 산포만)</div>
+      <div class="kpi-status" id="cap-pp-s">미분석</div>
     </div>
-    <div class="ccard">
-      <div class="ct">비용 구성</div>
-      <div class="ch"><canvas id="c4" role="img" aria-label="비용 구성 도넛 차트"></canvas></div>
+    <div class="kpi-chip kpi-sky card">
+      <div class="kpi-val" id="cap-ppk">—</div>
+      <div class="kpi-label">Ppk (장기, 중심+산포)</div>
+      <div class="kpi-status" id="cap-ppk-s">미분석</div>
     </div>
   </div>
 
-  <div class="cost-strip">
-    <div class="cs-title">비용 구성 상세 <span style="font-weight:400;color:var(--txt3)">단위: 천원</span></div>
-    <div class="cs-grid">
-      ${Object.entries(r.cs).map(([k,v])=>`<div class="cs-item"><div class="cs-lbl">${cn[k]}</div><div class="cs-val">${fm(v)}</div></div>`).join('')}
+  <div class="card-row cols-2">
+    <!-- Capability Chart -->
+    <div class="card">
+      <div class="section-title">📊 공정능력분석 그래프</div>
+      <div class="chart-wrap">
+        <canvas id="capabilityChart"></canvas>
+      </div>
+      <div id="capNormAlert" style="margin-top:10px;"></div>
+    </div>
+
+    <!-- Sigma Level + Details -->
+    <div class="card">
+      <div class="section-title">🎯 공정능력 상세 분석</div>
+
+      <!-- Sigma Level Bar -->
+      <div style="margin-bottom:16px;">
+        <label style="margin-bottom:8px;">시그마 수준</label>
+        <div style="display:flex;gap:4px;align-items:center;">
+          <div id="sigmaBar" style="flex:1;height:18px;border-radius:9px;background:linear-gradient(90deg,#EF4444,#F59E0B,#22C55E);position:relative;overflow:hidden;">
+            <div id="sigmaNeedle" style="position:absolute;top:-2px;width:4px;height:22px;background:#3D2B4A;border-radius:2px;transition:left 0.5s ease;left:0%;"></div>
+          </div>
+          <span id="sigmaLevel" style="font-weight:800;font-size:1.1rem;color:#7C3AED;min-width:50px;text-align:right;">— σ</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:0.7rem;color:var(--text-light);margin-top:3px;">
+          <span>1σ</span><span>2σ</span><span>3σ</span><span>4σ</span><span>5σ</span><span>6σ</span>
+        </div>
+      </div>
+
+      <!-- Defect Rate -->
+      <div class="kpi-grid" style="grid-template-columns:1fr 1fr;margin-bottom:14px;">
+        <div class="kpi-chip kpi-peach">
+          <div class="kpi-val" style="font-size:1.2rem;" id="cap-defppm">—</div>
+          <div class="kpi-label">불량률 (PPM)</div>
+        </div>
+        <div class="kpi-chip kpi-butter">
+          <div class="kpi-val" style="font-size:1.2rem;" id="cap-defpct">—</div>
+          <div class="kpi-label">불량률 (%)</div>
+        </div>
+      </div>
+
+      <!-- Spread Details -->
+      <div style="font-size:0.82rem;color:var(--text-mid);">
+        <div class="sparkline-row">
+          <span class="sparkline-label">σ within</span>
+          <div class="sparkline-bar-wrap"><div class="sparkline-bar" id="sb-within" style="background:var(--lavender);width:0%;"></div></div>
+          <span id="sv-within" style="min-width:55px;text-align:right;">—</span>
+        </div>
+        <div class="sparkline-row">
+          <span class="sparkline-label">σ overall</span>
+          <div class="sparkline-bar-wrap"><div class="sparkline-bar" id="sb-overall" style="background:var(--sky);width:0%;"></div></div>
+          <span id="sv-overall" style="min-width:55px;text-align:right;">—</span>
+        </div>
+        <div class="sparkline-row">
+          <span class="sparkline-label">USL−μ</span>
+          <div class="sparkline-bar-wrap"><div class="sparkline-bar" id="sb-uslm" style="background:var(--rose);width:0%;"></div></div>
+          <span id="sv-uslm" style="min-width:55px;text-align:right;">—</span>
+        </div>
+        <div class="sparkline-row">
+          <span class="sparkline-label">μ−LSL</span>
+          <div class="sparkline-bar-wrap"><div class="sparkline-bar" id="sb-mlsl" style="background:var(--mint);width:0%;"></div></div>
+          <span id="sv-mlsl" style="min-width:55px;text-align:right;">—</span>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+
+      <!-- Judgment Table -->
+      <div style="font-size:0.82rem;">
+        <table>
+          <tr>
+            <th>등급</th><th>Cp 범위</th><th>판정</th><th>조치</th>
+          </tr>
+          <tr id="judgeRow0"><td>0</td><td>≥ 1.67</td><td>매우 충분</td><td>현 상태 유지</td></tr>
+          <tr id="judgeRow1"><td>1</td><td>1.33~1.67</td><td>충분</td><td>현 상태 유지</td></tr>
+          <tr id="judgeRow2"><td>2</td><td>1.00~1.33</td><td>주의 필요</td><td>공정 관리 강화</td></tr>
+          <tr id="judgeRow3"><td>3</td><td>0.67~1.00</td><td>모자람</td><td>개선 필요</td></tr>
+          <tr id="judgeRow4"><td>4</td><td>< 0.67</td><td>매우 부족</td><td>긴급 대책</td></tr>
+        </table>
+      </div>
     </div>
   </div>
 
-  <div class="tcard">
-    <div class="th-row">월별 계획 상세</div>
-    <div class="tscroll">
+  <!-- Q-Q Plot + Box Plot -->
+  <div class="card-row cols-2">
+    <div class="card">
+      <div class="section-title">📐 Q-Q Plot (정규성 검정)</div>
+      <div class="chart-wrap"><canvas id="qqChart"></canvas></div>
+      <div id="normTestResult" style="margin-top:8px;font-size:0.82rem;"></div>
+    </div>
+    <div class="card">
+      <div class="section-title">📦 Box Plot (부분군별 분포)</div>
+      <div class="chart-wrap"><canvas id="boxChart"></canvas></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════ SPC ═══════════════════════ -->
+<div id="tab-spc" class="tab-panel fade-in">
+
+  <!-- Chart Type Selector -->
+  <div class="card" style="margin-bottom:16px;padding:14px 20px;">
+    <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
+      <span class="section-title" style="margin:0;">관리도 유형:</span>
+      <button class="btn btn-sm btn-primary" id="btn-imr" onclick="selectChartType('IMR')">I-MR (n=1)</button>
+      <button class="btn btn-sm" id="btn-xbarr" onclick="selectChartType('XbarR')" style="background:var(--border);color:var(--text);">Xbar-R (2~9)</button>
+      <button class="btn btn-sm" id="btn-xbars" onclick="selectChartType('XbarS')" style="background:var(--border);color:var(--text);">Xbar-S (≥10)</button>
+      <button class="btn btn-sm" id="btn-auto" onclick="selectChartType('Auto')" style="background:linear-gradient(135deg,var(--mint),#5BB899);color:white;">🤖 자동 선택</button>
+      <span id="chartTypeLabel" style="font-size:0.82rem;color:var(--text-mid);margin-left:8px;"></span>
+    </div>
+  </div>
+
+  <!-- Main Control Chart -->
+  <div class="card" style="margin-bottom:16px;">
+    <div class="section-title">
+      📈 <span id="mainChartTitle">관리도</span>
+      <span class="badge" id="mainChartBadge" style="background:#EDE5FF;color:#7C3AED;">대기중</span>
+    </div>
+    <div class="chart-wrap" style="margin-bottom:12px;">
+      <div class="chart-title" id="upperChartLabel">상부 차트</div>
+      <canvas id="upperChart" style="max-height:200px;"></canvas>
+    </div>
+    <div class="chart-wrap">
+      <div class="chart-title" id="lowerChartLabel">하부 차트</div>
+      <canvas id="lowerChart" style="max-height:200px;"></canvas>
+    </div>
+  </div>
+
+  <div class="card-row cols-2">
+    <!-- Control Limits Summary -->
+    <div class="card">
+      <div class="section-title">🎚 관리한계 요약</div>
+      <div class="kpi-grid" style="grid-template-columns:repeat(3,1fr);">
+        <div class="kpi-chip kpi-rose"><div class="kpi-val" style="font-size:1.1rem;" id="cl-ucl1">—</div><div class="kpi-label">UCL (상)</div></div>
+        <div class="kpi-chip kpi-mint"><div class="kpi-val" style="font-size:1.1rem;" id="cl-cl1">—</div><div class="kpi-label">CL (중심)</div></div>
+        <div class="kpi-chip kpi-sky"><div class="kpi-val" style="font-size:1.1rem;" id="cl-lcl1">—</div><div class="kpi-label">LCL (하)</div></div>
+        <div class="kpi-chip kpi-rose"><div class="kpi-val" style="font-size:1.1rem;" id="cl-ucl2">—</div><div class="kpi-label">UCL (하부)</div></div>
+        <div class="kpi-chip kpi-mint"><div class="kpi-val" style="font-size:1.1rem;" id="cl-cl2">—</div><div class="kpi-label">CL (하부)</div></div>
+        <div class="kpi-chip kpi-sky"><div class="kpi-val" style="font-size:1.1rem;" id="cl-lcl2">—</div><div class="kpi-label">LCL (하부)</div></div>
+      </div>
+    </div>
+
+    <!-- Nelson Rule Violations -->
+    <div class="card">
+      <div class="section-title">⚠️ Nelson's Rule 이상판정</div>
+      <div id="nelsonSummary" style="margin-bottom:10px;font-size:0.82rem;color:var(--text-mid);">분석 후 표시됩니다.</div>
+      <div class="violation-list" id="violationList"></div>
+    </div>
+  </div>
+
+  <!-- Nelson Rules Grid -->
+  <div class="card" style="margin-top:16px;">
+    <div class="section-title">🔍 Nelson's Rule 8가지 규칙 상세</div>
+    <div class="rule-grid" id="nelsonGrid">
+      <!-- generated by JS -->
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════ SIMULATE ═══════════════════════ -->
+<div id="tab-simulate" class="tab-panel fade-in">
+  <div class="card-row cols-1-2">
+    <div class="card">
+      <div class="section-title">🎲 공정 시뮬레이터</div>
+      <p style="font-size:0.82rem;color:var(--text-mid);margin-bottom:16px;">파라미터를 조정하여 공정 변화가 Cp/Cpk에 미치는 영향을 실시간으로 확인하세요.</p>
+
+      <div class="sim-param">
+        <label>부분군 수 <span class="val-badge" id="sv-nsg">20</span></label>
+        <input type="range" id="sl-nsg" min="5" max="50" value="20" oninput="updateSimParam('nsg',this.value)">
+      </div>
+      <div class="sim-param">
+        <label>부분군 크기 <span class="val-badge" id="sv-sgsize">5</span></label>
+        <input type="range" id="sl-sgsize" min="1" max="15" value="5" oninput="updateSimParam('sgsize',this.value)">
+      </div>
+      <div class="sim-param">
+        <label>목표값 <span class="val-badge" id="sv-target">100</span></label>
+        <input type="range" id="sl-target" min="50" max="150" value="100" oninput="updateSimParam('target',this.value)">
+      </div>
+      <div class="sim-param">
+        <label>표준편차 <span class="val-badge" id="sv-std">2</span></label>
+        <input type="range" id="sl-std" min="0.5" max="10" value="2" step="0.5" oninput="updateSimParam('std',this.value)">
+      </div>
+      <div class="sim-param">
+        <label>평균 이동량 <span class="val-badge" id="sv-shift">0</span></label>
+        <input type="range" id="sl-shift" min="-10" max="10" value="0" step="0.5" oninput="updateSimParam('shift',this.value)">
+      </div>
+      <div class="sim-param">
+        <label>허용 오차 <span class="val-badge" id="sv-tol">10</span></label>
+        <input type="range" id="sl-tol" min="1" max="30" value="10" oninput="updateSimParam('tol',this.value)">
+      </div>
+
+      <div class="divider"></div>
+      <div class="kpi-grid" style="grid-template-columns:1fr 1fr;">
+        <div class="kpi-chip kpi-lavender"><div class="kpi-val" id="sim-cp">—</div><div class="kpi-label">Cp</div></div>
+        <div class="kpi-chip kpi-rose"><div class="kpi-val" id="sim-cpk">—</div><div class="kpi-label">Cpk</div></div>
+      </div>
+
+      <button class="btn btn-primary" style="width:100%;margin-top:14px;" onclick="loadSimToMain()">→ 메인 분석에 적용</button>
+    </div>
+
+    <div class="card">
+      <div class="section-title">📊 시뮬레이션 결과</div>
+      <div class="chart-wrap" style="margin-bottom:12px;">
+        <div class="chart-title">분포 그래프</div>
+        <canvas id="simDistChart"></canvas>
+      </div>
+      <div class="chart-wrap">
+        <div class="chart-title">I-MR 관리도 미리보기</div>
+        <canvas id="simControlChart"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════ GUIDE ═══════════════════════ -->
+<div id="tab-guide" class="tab-panel fade-in">
+  <div class="card-row cols-2">
+    <div class="card">
+      <div class="section-title">📖 공정능력지수 해석 가이드</div>
       <table>
-        <thead><tr><th>항목</th>${L.map(l=>`<th>${l}</th>`).join('')}</tr></thead>
+        <thead><tr><th>지수</th><th>의미</th><th>공식</th></tr></thead>
         <tbody>
-          <tr><td>수요 D</td>${r.D.map(v=>`<td>${fm(v)}</td>`).join('')}</tr>
-          <tr><td>종업원 W</td>${r.W.slice(1).map(v=>`<td>${fm(v)}</td>`).join('')}</tr>
-          <tr><td>고용 H</td>${r.H.slice(1).map(v=>`<td>${fm(v)}</td>`).join('')}</tr>
-          <tr><td>해고 L</td>${r.L.slice(1).map(v=>`<td>${fm(v)}</td>`).join('')}</tr>
-          <tr><td>생산 P</td>${r.P.slice(1).map(v=>`<td>${fm(v)}</td>`).join('')}</tr>
-          <tr><td>재고 I</td>${r.I.slice(1).map(v=>`<td class="${v<200?'tw':''}">${fm(v)}</td>`).join('')}</tr>
-          <tr><td>부재고 S</td>${r.S.slice(1).map(v=>`<td class="${v>0?'td':''}">${fm(v)}</td>`).join('')}</tr>
-          <tr><td>하청 C</td>${r.C.slice(1).map(v=>`<td>${fm(v)}</td>`).join('')}</tr>
-          <tr><td>잔업 O</td>${r.O.slice(1).map(v=>`<td>${fm(v)}</td>`).join('')}</tr>
+          <tr><td><strong>Cp</strong></td><td>산포만 고려한 단기 잠재능력</td><td>(USL−LSL) / 6σ<sub>within</sub></td></tr>
+          <tr><td><strong>Cpk</strong></td><td>중심 치우침 포함 단기 능력</td><td>min((USL−μ)/3σ<sub>w</sub>, (μ−LSL)/3σ<sub>w</sub>)</td></tr>
+          <tr><td><strong>Pp</strong></td><td>산포만 고려한 장기 실제능력</td><td>(USL−LSL) / 6σ<sub>overall</sub></td></tr>
+          <tr><td><strong>Ppk</strong></td><td>중심 치우침 포함 장기 능력</td><td>min((USL−μ)/3σ<sub>o</sub>, (μ−LSL)/3σ<sub>o</sub>)</td></tr>
+        </tbody>
+      </table>
+      <div class="alert-box alert-info" style="margin-top:12px;">
+        💡 <strong>Cp > Cpk</strong>이면 공정 평균이 중심에서 치우쳐 있음을 의미합니다.
+      </div>
+    </div>
+    <div class="card">
+      <div class="section-title">🏆 공정능력 등급 기준</div>
+      <table>
+        <thead><tr><th>Cp 값</th><th>등급</th><th>수준</th><th>σ 수준</th></tr></thead>
+        <tbody>
+          <tr><td>≥ 1.67</td><td style="color:#065F46;font-weight:700;">0 (최우수)</td><td>매우 충분</td><td>±5σ</td></tr>
+          <tr><td>1.33~1.67</td><td style="color:#1D4ED8;font-weight:700;">1 (우수)</td><td>충분</td><td>±4σ</td></tr>
+          <tr><td>1.00~1.33</td><td style="color:#92400E;font-weight:700;">2 (보통)</td><td>주의 필요</td><td>±3σ</td></tr>
+          <tr><td>0.67~1.00</td><td style="color:#C2410C;font-weight:700;">3 (미흡)</td><td>모자람</td><td>±2σ</td></tr>
+          <tr><td>< 0.67</td><td style="color:#991B1B;font-weight:700;">4 (불량)</td><td>매우 부족</td><td>±1σ</td></tr>
         </tbody>
       </table>
     </div>
   </div>
-  `;
 
-  const tf={size:9};const nl={legend:{display:false}};
-  setTimeout(()=>{
-    CH.c1=new Chart(document.getElementById('c1'),{
-      type:'bar',
-      data:{labels:L,datasets:[
-        {label:'수요',data:r.D,type:'line',borderColor:'#6a7060',borderWidth:1.5,tension:.3,pointRadius:2,fill:false,borderDash:[3,3],order:0},
-        {label:'생산',data:r.P.slice(1).map(v=>Math.round(v)),backgroundColor:'rgba(168,196,224,.7)',order:1},
-        {label:'하청',data:r.C.slice(1).map(v=>Math.round(v)),backgroundColor:'rgba(232,216,160,.8)',order:2},
-      ]},
-      options:{responsive:true,maintainAspectRatio:false,plugins:nl,scales:{x:{ticks:{font:tf}},y:{beginAtZero:true,ticks:{font:tf,callback:v=>v>=1000?(v/1000).toFixed(1)+'k':v}}}}
-    });
-    CH.c2=new Chart(document.getElementById('c2'),{
-      type:'line',
-      data:{labels:L,datasets:[
-        {label:'재고',data:r.I.slice(1).map(v=>Math.round(v)),borderColor:'#5aaa9a',backgroundColor:'rgba(168,212,204,.2)',fill:true,tension:.35,pointRadius:2},
-        {label:'부재고',data:r.S.slice(1).map(v=>Math.round(v)),borderColor:'#c87890',backgroundColor:'rgba(232,180,196,.2)',fill:true,tension:.35,pointRadius:2,borderDash:[3,3]},
-      ]},
-      options:{responsive:true,maintainAspectRatio:false,plugins:nl,scales:{y:{beginAtZero:true,ticks:{font:tf}},x:{ticks:{font:tf}}}}
-    });
-    CH.c3=new Chart(document.getElementById('c3'),{
-      type:'bar',
-      data:{labels:L,datasets:[
-        {label:'종업원',data:r.W.slice(1).map(v=>Math.round(v)),type:'line',borderColor:'#9878d0',backgroundColor:'rgba(200,184,232,.15)',fill:true,tension:.3,pointRadius:2,yAxisID:'y',order:0},
-        {label:'고용',data:r.H.slice(1).map(v=>Math.round(v)),backgroundColor:'rgba(176,212,184,.8)',yAxisID:'y2',order:1},
-        {label:'해고',data:r.L.slice(1).map(v=>Math.round(v)),backgroundColor:'rgba(232,180,196,.8)',yAxisID:'y2',order:2},
-      ]},
-      options:{responsive:true,maintainAspectRatio:false,plugins:nl,scales:{x:{ticks:{font:tf}},y:{position:'left',ticks:{font:tf}},y2:{position:'right',grid:{drawOnChartArea:false},ticks:{font:tf}}}}
-    });
-    CH.c4=new Chart(document.getElementById('c4'),{
-      type:'doughnut',
-      data:{labels:Object.keys(r.cs).map(k=>cn[k]),datasets:[{data:Object.values(r.cs).map(v=>Math.round(v)),backgroundColor:PAL,borderWidth:0,hoverOffset:3}]},
-      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{font:{size:9},boxWidth:7,padding:4}}}}
-    });
-  },40);
+  <div class="card" style="margin-top:16px;">
+    <div class="section-title">📋 Nelson's Rule 8가지 이상판정 규칙</div>
+    <div class="rule-grid">
+      <div class="rule-card"><div class="rule-num">Rule 1</div><div class="rule-desc">1개 이상의 관측치가 ±3σ를 벗어남</div></div>
+      <div class="rule-card"><div class="rule-num">Rule 2</div><div class="rule-desc">연속 9개 이상의 관측치가 중심선 위 또는 아래에 존재 (bias)</div></div>
+      <div class="rule-card"><div class="rule-num">Rule 3</div><div class="rule-desc">연속 6개 이상의 관측치가 계속 증가 또는 감소 (추세)</div></div>
+      <div class="rule-card"><div class="rule-num">Rule 4</div><div class="rule-desc">연속 14개 이상의 관측치가 번갈아 증가/감소 (진동)</div></div>
+      <div class="rule-card"><div class="rule-num">Rule 5</div><div class="rule-desc">연속 3개 중 2개 이상이 ±2σ 외부에 같은 방향으로 존재</div></div>
+      <div class="rule-card"><div class="rule-num">Rule 6</div><div class="rule-desc">연속 5개 중 4개 이상이 ±1σ 외부에 같은 방향으로 존재</div></div>
+      <div class="rule-card"><div class="rule-num">Rule 7</div><div class="rule-desc">연속 15개 이상의 관측치가 ±1σ 범위 내에 존재 (과소산포)</div></div>
+      <div class="rule-card"><div class="rule-num">Rule 8</div><div class="rule-desc">연속 8개의 관측치가 모두 ±1σ 밖에 위치</div></div>
+    </div>
+  </div>
+
+  <div class="card-row cols-2" style="margin-top:16px;">
+    <div class="card">
+      <div class="section-title">📐 관리도 선택 기준</div>
+      <table>
+        <thead><tr><th>데이터 유형</th><th>부분군 크기</th><th>관리도</th></tr></thead>
+        <tbody>
+          <tr><td>계량형</td><td>n = 1</td><td>I-MR (개별-이동범위)</td></tr>
+          <tr><td>계량형</td><td>n = 2~9</td><td>Xbar-R (평균-범위)</td></tr>
+          <tr><td>계량형</td><td>n ≥ 10</td><td>Xbar-S (평균-표준편차)</td></tr>
+          <tr><td>계수형 (불량수)</td><td>일정</td><td>NP 관리도</td></tr>
+          <tr><td>계수형 (불량률)</td><td>가변</td><td>P 관리도</td></tr>
+          <tr><td>계수형 (결함수)</td><td>일정</td><td>C 관리도</td></tr>
+          <tr><td>계수형 (결함률)</td><td>가변</td><td>U 관리도</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="card">
+      <div class="section-title">⚙️ σ 계산 방법</div>
+      <div style="font-size:0.85rem;line-height:1.8;color:var(--text-mid);">
+        <p><strong>σ_within (단기):</strong></p>
+        <ul style="margin-left:16px;margin-bottom:8px;">
+          <li>n=1: σ = MR̄ / d₂(w)</li>
+          <li>n≥2 (범위): σ = R̄ / d₂(n)</li>
+          <li>n≥2 (표준편차): σ = s̄ / c₄(n)</li>
+        </ul>
+        <p><strong>σ_overall (장기):</strong></p>
+        <ul style="margin-left:16px;">
+          <li>σ = s / c₄(n) (전체 표준편차)</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════ COMPARE ═══════════════════════ -->
+<div id="tab-compare" class="tab-panel fade-in">
+
+  <!-- Snapshot bar -->
+  <div class="snapshot-bar">
+    <span style="font-weight:700;color:var(--text);">📸 스냅샷</span>
+    <span>분석 결과를 저장하고 비교하세요</span>
+    <button class="btn btn-sm btn-primary" onclick="saveSnapshot()">현재 상태 저장</button>
+    <div id="snapshotList" style="display:flex;gap:6px;flex-wrap:wrap;"></div>
+  </div>
+
+  <!-- Delta KPI strip -->
+  <div class="delta-strip" id="deltaStrip">
+    <div class="delta-card neutral" id="dc-cp">
+      <div class="delta-metric">Cp</div>
+      <div class="delta-row"><span class="delta-before" id="db-cp">—</span><span class="delta-arrow">→</span><span class="delta-after" id="da-cp">—</span></div>
+      <div class="delta-change neu" id="dd-cp">—</div>
+    </div>
+    <div class="delta-card neutral" id="dc-cpk">
+      <div class="delta-metric">Cpk</div>
+      <div class="delta-row"><span class="delta-before" id="db-cpk">—</span><span class="delta-arrow">→</span><span class="delta-after" id="da-cpk">—</span></div>
+      <div class="delta-change neu" id="dd-cpk">—</div>
+    </div>
+    <div class="delta-card neutral" id="dc-pp">
+      <div class="delta-metric">Pp</div>
+      <div class="delta-row"><span class="delta-before" id="db-pp">—</span><span class="delta-arrow">→</span><span class="delta-after" id="da-pp">—</span></div>
+      <div class="delta-change neu" id="dd-pp">—</div>
+    </div>
+    <div class="delta-card neutral" id="dc-ppk">
+      <div class="delta-metric">Ppk</div>
+      <div class="delta-row"><span class="delta-before" id="db-ppk">—</span><span class="delta-arrow">→</span><span class="delta-after" id="da-ppk">—</span></div>
+      <div class="delta-change neu" id="dd-ppk">—</div>
+    </div>
+  </div>
+
+  <!-- Insight narrative -->
+  <div class="insight-box" id="insightBox">
+    <h4>🧠 변화 해석</h4>
+    <ul class="insight-list" id="insightList">
+      <li><span class="iico">💡</span><span>Before 데이터를 먼저 저장한 뒤, After 데이터를 분석하면 비교가 시작됩니다.</span></li>
+    </ul>
+  </div>
+
+  <!-- Overlay distribution chart -->
+  <div class="overlay-card">
+    <div class="section-title">📊 분포 비교 (Overlay)</div>
+    <div class="overlay-legend">
+      <div class="legend-item"><div class="legend-dot" style="background:rgba(124,58,237,0.7)"></div><span id="legendBefore">Before</span></div>
+      <div class="legend-item"><div class="legend-dot" style="background:rgba(45,212,191,0.7)"></div><span id="legendAfter">After</span></div>
+      <div class="legend-item"><div class="legend-dot" style="background:rgba(239,68,68,0.8);border-radius:0"></div><span>규격 한계 (LSL / USL)</span></div>
+    </div>
+    <div class="chart-wrap" style="height:300px;">
+      <canvas id="overlayChart" style="max-height:300px;"></canvas>
+    </div>
+  </div>
+
+  <!-- Side-by-side data editors -->
+  <div class="compare-split">
+    <div class="compare-panel before">
+      <span class="panel-badge badge-before">BEFORE</span>
+      <div class="section-title" style="margin-bottom:10px;">원본 데이터</div>
+      <label style="font-size:0.8rem;color:var(--text-mid);margin-bottom:4px;display:block;">데이터 (쉼표 구분)</label>
+      <textarea id="cmp-before-data" style="width:100%;height:100px;font-family:monospace;font-size:0.8rem;padding:8px;border:1.5px solid var(--border);border-radius:var(--radius-sm);resize:vertical;" placeholder="분석 후 자동으로 채워집니다"></textarea>
+      <div class="grid-2" style="margin-top:8px;">
+        <div><label style="font-size:0.78rem;color:var(--text-mid);">LSL</label><input type="number" id="cmp-before-lsl" step="0.1" style="width:100%;padding:7px 10px;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-size:0.88rem;"></div>
+        <div><label style="font-size:0.78rem;color:var(--text-mid);">USL</label><input type="number" id="cmp-before-usl" step="0.1" style="width:100%;padding:7px 10px;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-size:0.88rem;"></div>
+      </div>
+      <div style="margin-top:8px;background:var(--soft-gray);border-radius:var(--radius-sm);padding:10px 12px;font-size:0.8rem;">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
+          <div>평균: <strong id="cmp-before-mean">—</strong></div>
+          <div>σ: <strong id="cmp-before-std">—</strong></div>
+          <div>Cp: <strong id="cmp-before-cp">—</strong></div>
+          <div>Cpk: <strong id="cmp-before-cpk">—</strong></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="compare-panel after">
+      <span class="panel-badge badge-after">AFTER</span>
+      <div class="section-title" style="margin-bottom:10px;">수정된 데이터</div>
+      <label style="font-size:0.8rem;color:var(--text-mid);margin-bottom:4px;display:block;">데이터를 직접 수정하세요</label>
+      <textarea id="cmp-after-data" style="width:100%;height:100px;font-family:monospace;font-size:0.8rem;padding:8px;border:1.5px solid #99F6E4;border-radius:var(--radius-sm);resize:vertical;" placeholder="수치를 변경하면 바로 반영됩니다" oninput="updateAfter()"></textarea>
+      <div class="grid-2" style="margin-top:8px;">
+        <div><label style="font-size:0.78rem;color:var(--text-mid);">LSL</label><input type="number" id="cmp-after-lsl" step="0.1" style="width:100%;padding:7px 10px;border:1.5px solid #99F6E4;border-radius:var(--radius-sm);font-size:0.88rem;" oninput="updateAfter()"></div>
+        <div><label style="font-size:0.78rem;color:var(--text-mid);">USL</label><input type="number" id="cmp-after-usl" step="0.1" style="width:100%;padding:7px 10px;border:1.5px solid #99F6E4;border-radius:var(--radius-sm);font-size:0.88rem;" oninput="updateAfter()"></div>
+      </div>
+      <div style="margin-top:8px;background:#F0FDFA;border-radius:var(--radius-sm);padding:10px 12px;font-size:0.8rem;border:1px solid #99F6E4;">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
+          <div>평균: <strong id="cmp-after-mean">—</strong></div>
+          <div>σ: <strong id="cmp-after-std">—</strong></div>
+          <div>Cp: <strong id="cmp-after-cp">—</strong></div>
+          <div>Cpk: <strong id="cmp-after-cpk">—</strong></div>
+        </div>
+      </div>
+      <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="btn btn-sm btn-mint" onclick="applyWhatIf('sigma_half')">σ 절반으로</button>
+        <button class="btn btn-sm btn-secondary" onclick="applyWhatIf('center')">평균 중심화</button>
+        <button class="btn btn-sm btn-peach" onclick="applyWhatIf('noise')">노이즈 추가</button>
+        <button class="btn btn-sm" style="background:var(--border);color:var(--text-mid);" onclick="resetAfter()">↺ 원본 복원</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+</main>
+
+<script>
+// ════════════════════════════════════════════════════
+//  STATE
+// ════════════════════════════════════════════════════
+let state = {
+  data: [],      // flat array of numbers
+  groups: [],    // array of group labels (same length as data)
+  lsl: 9.5,
+  usl: 10.5,
+  sgSize: 1,
+  analysed: false,
+  chartType: 'Auto',
+  charts: {},
+  sim: { nsg:20, sgsize:5, target:100, std:2, shift:0, tol:10 }
+};
+
+// Unbiased constants table
+const C4 = [null, null, 0.7979, 0.8862, 0.9213, 0.9400, 0.9515, 0.9594, 0.9650, 0.9693, 0.9727,
+            0.9754, 0.9776, 0.9794, 0.9810, 0.9823, 0.9835, 0.9845, 0.9854, 0.9862, 0.9869,
+            0.9876, 0.9882, 0.9887, 0.9892, 0.9896];
+const D3 = [null,null,0,0,0,0,0,0.076,0.136,0.184,0.223,0.256,0.284,0.308,0.329,0.347,0.363,0.378,0.391,0.403,0.415,0.425,0.434,0.443,0.451,0.459];
+const D4 = [null,null,3.267,2.574,2.282,2.114,2.004,1.924,1.864,1.816,1.777,1.744,1.717,0,0,0,0,0,0,0,0,0,0,0,0,0];
+const A2 = [null,null,1.880,1.023,0.729,0.577,0.483,0.419,0.373,0.337,0.308];
+const D2 = [null,null,1.128,1.693,2.059,2.326,2.534,2.704,2.847,2.970,3.078];
+
+function c4(n){ if(n>=2&&n<=25)return C4[n]; return 0.9896; }
+function d2(n){ if(n>=2&&n<=10)return D2[n]; return 3.078; }
+function d3val(n){ if(n>=2&&n<=25)return D3[n]||0; return 0; }
+function d4val(n){ if(n>=2&&n<=25)return D4[n]||3.267; return 3.267; }
+
+// ════════════════════════════════════════════════════
+//  UI HELPERS
+// ════════════════════════════════════════════════════
+function switchTab(tab) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-'+tab).classList.add('active');
+  event.target.classList.add('active');
+  if(tab==='simulate') runSimulation();
 }
 
-setTimeout(()=>run(),80);
+function destroyChart(id) {
+  if(state.charts[id]) { state.charts[id].destroy(); delete state.charts[id]; }
+}
+
+function createChart(id, config) {
+  destroyChart(id);
+  const ctx = document.getElementById(id).getContext('2d');
+  state.charts[id] = new Chart(ctx, config);
+  return state.charts[id];
+}
+
+// Clock
+function updateClock() {
+  document.getElementById('clock').textContent = new Date().toLocaleTimeString('ko-KR');
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+// ════════════════════════════════════════════════════
+//  DATA INPUT
+// ════════════════════════════════════════════════════
+function parseData() {
+  const raw = document.getElementById('rawData').value.trim();
+  if(!raw) return null;
+  const nums = raw.split(/[\s,;]+/).map(Number).filter(n => !isNaN(n) && n!==null);
+  return nums.length ? nums : null;
+}
+
+function loadSampleData() {
+  // Simulated wafer thickness data: 30 lots, 5 samples each
+  let d = [];
+  for(let i=0;i<30;i++){
+    const shift = (Math.random()-0.5)*0.3;
+    for(let j=0;j<5;j++) d.push(+(10 + shift + (Math.random()-0.5)*0.4).toFixed(4));
+  }
+  document.getElementById('rawData').value = d.join(', ');
+  document.getElementById('lsl').value = '9.5';
+  document.getElementById('usl').value = '10.5';
+  document.getElementById('sgSize').value = '5';
+  document.getElementById('sgColName').value = 'Lot';
+  document.getElementById('valColName').value = 'Thickness';
+}
+
+function loadCSV(event) {
+  const file = event.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const text = e.target.result;
+    const lines = text.split('\n').map(l=>l.trim()).filter(Boolean);
+    // Try to parse: first col=group, second col=value OR all numbers
+    let nums = [];
+    let hasHeader = isNaN(parseFloat(lines[0].split(',')[0]));
+    let start = hasHeader ? 1 : 0;
+    for(let i=start;i<lines.length;i++){
+      const parts = lines[i].split(',');
+      const lastNum = parts.map(Number).filter(n=>!isNaN(n));
+      if(lastNum.length) nums = nums.concat(lastNum);
+    }
+    if(nums.length){
+      document.getElementById('rawData').value = nums.join(', ');
+    }
+  };
+  reader.readAsText(file);
+}
+
+function handleDrop(event) {
+  event.preventDefault();
+  document.getElementById('dropZone').classList.remove('dragover');
+  const file = event.dataTransfer.files[0];
+  if(file){ document.getElementById('csvFile').files = event.dataTransfer.files; loadCSV({target:{files:[file]}}); }
+}
+
+function clearAll() {
+  document.getElementById('rawData').value = '';
+  state.data = []; state.analysed = false;
+  ['kpi-n','kpi-mean','kpi-std','kpi-cp','kpi-cpk','kpi-ooc'].forEach(id=>{
+    document.getElementById(id).textContent='—';
+  });
+  ['cap-cp','cap-cpk','cap-pp','cap-ppk'].forEach(id=>{
+    document.getElementById(id).textContent='—';
+    document.getElementById(id+'-s').textContent='미분석';
+    document.getElementById(id+'-s').className='kpi-status';
+  });
+}
+
+// ════════════════════════════════════════════════════
+//  STATISTICS
+// ════════════════════════════════════════════════════
+function mean(arr){ return arr.reduce((a,b)=>a+b,0)/arr.length; }
+function std(arr, ddof=1){
+  const m=mean(arr);
+  return Math.sqrt(arr.reduce((s,x)=>s+(x-m)**2,0)/(arr.length-ddof));
+}
+function median(arr){ const s=[...arr].sort((a,b)=>a-b); const m=Math.floor(s.length/2); return s.length%2?s[m]:(s[m-1]+s[m])/2; }
+
+function shapiroWilkApprox(arr) {
+  // Simplified W statistic approximation
+  if(arr.length < 3) return 1;
+  const n = arr.length;
+  const sorted = [...arr].sort((a,b)=>a-b);
+  const m = mean(sorted);
+  const s2 = arr.reduce((a,x)=>a+(x-m)**2, 0);
+  // Use simple correlation method
+  const half = Math.floor(n/2);
+  let b = 0;
+  for(let i=0;i<half;i++) b += (sorted[n-1-i]-sorted[i])*(sorted[n-1-i]-sorted[i]);
+  const W = Math.min(b/s2, 1);
+  // Rough p-value
+  const z = Math.log(1-W);
+  const p = 1 / (1 + Math.exp(-(z + 3) * 2));
+  return { W: W.toFixed(4), p: p.toFixed(4), normal: p > 0.05 };
+}
+
+function calcSigmaWithin(groups, n) {
+  if(n===1) {
+    // I-MR: MR average
+    const MR = [];
+    for(let i=1;i<groups.length;i++) MR.push(Math.abs(groups[i][0]-groups[i-1][0]));
+    const MRbar = mean(MR);
+    return MRbar / d2(2);
+  }
+  // Xbar-R: pooled range method
+  const ranges = groups.map(g => Math.max(...g) - Math.min(...g));
+  const Rbar = mean(ranges);
+  return Rbar / d2(n);
+}
+
+function calcCapability(data, groups, lsl, usl, n) {
+  const xbar = mean(data);
+  const sigWithin = calcSigmaWithin(groups, n);
+  const sigOverall = std(data, 1) / c4(data.length);
+  const Cp  = (usl - lsl) / (6 * sigWithin);
+  const Cpk = Math.min((usl - xbar)/(3*sigWithin), (xbar - lsl)/(3*sigWithin));
+  const Pp  = (usl - lsl) / (6 * sigOverall);
+  const Ppk = Math.min((usl - xbar)/(3*sigOverall), (xbar - lsl)/(3*sigOverall));
+  return { xbar, sigWithin, sigOverall, Cp, Cpk, Pp, Ppk };
+}
+
+function defectRate(Cpk) {
+  if(isNaN(Cpk)||Cpk===null) return { ppm: 0, pct: 0 };
+  const z = 3 * Cpk;
+  // Using normal CDF approximation
+  const pDefect = 2 * (1 - normalCDF(z));
+  return { ppm: +(pDefect * 1e6).toFixed(1), pct: +(pDefect * 100).toFixed(4) };
+}
+
+function normalCDF(x) {
+  const a1=0.254829592,a2=-0.284496736,a3=1.421413741,a4=-1.453152027,a5=1.061405429,p=0.3275911;
+  const sign = x<0?-1:1;
+  x = Math.abs(x)/Math.sqrt(2);
+  const t = 1/(1+p*x);
+  const y = 1-(((((a5*t+a4)*t)+a3)*t+a2)*t+a1)*t*Math.exp(-x*x);
+  return 0.5*(1+sign*y);
+}
+
+// ════════════════════════════════════════════════════
+//  NELSON RULES
+// ════════════════════════════════════════════════════
+function nelsonRules(points, cl, sigma) {
+  const violations = [];
+  const n = points.length;
+  const z = points.map(p => (p - cl) / sigma);
+
+  // Rule 1: > 3σ
+  for(let i=0;i<n;i++) if(Math.abs(z[i])>3) violations.push({rule:1,idx:i,desc:`점 ${i+1}: ±3σ 초과 (${points[i].toFixed(3)})`});
+
+  // Rule 2: 9 same side
+  for(let i=8;i<n;i++){
+    const seg=z.slice(i-8,i+1);
+    if(seg.every(v=>v>0)||seg.every(v=>v<0)) violations.push({rule:2,idx:i,desc:`점 ${i-7}~${i+1}: 9개 연속 중심선 같은 쪽`});
+  }
+
+  // Rule 3: 6 consecutive increasing or decreasing
+  for(let i=5;i<n;i++){
+    const seg=points.slice(i-5,i+1);
+    let inc=true,dec=true;
+    for(let j=1;j<seg.length;j++){if(seg[j]<=seg[j-1])inc=false;if(seg[j]>=seg[j-1])dec=false;}
+    if(inc||dec) violations.push({rule:3,idx:i,desc:`점 ${i-4}~${i+1}: 6개 연속 ${inc?'증가':'감소'} (추세)`});
+  }
+
+  // Rule 4: 14 alternating
+  for(let i=13;i<n;i++){
+    const seg=points.slice(i-13,i+1);
+    let alt=true;
+    for(let j=1;j<seg.length;j++){
+      if(j%2===1&&seg[j]<=seg[j-1])alt=false;
+      if(j%2===0&&seg[j]>=seg[j-1])alt=false;
+    }
+    if(alt) violations.push({rule:4,idx:i,desc:`점 ${i-12}~${i+1}: 14개 교대 진동`});
+  }
+
+  // Rule 5: 2 of 3 > 2σ same side
+  for(let i=2;i<n;i++){
+    const seg=z.slice(i-2,i+1);
+    const aboveTwo=seg.filter(v=>v>2).length;
+    const belowTwo=seg.filter(v=>v<-2).length;
+    if(aboveTwo>=2||belowTwo>=2) violations.push({rule:5,idx:i,desc:`점 ${i-1}~${i+1}: 3개 중 2개 ±2σ 외부`});
+  }
+
+  // Rule 6: 4 of 5 > 1σ same side
+  for(let i=4;i<n;i++){
+    const seg=z.slice(i-4,i+1);
+    const above=seg.filter(v=>v>1).length;
+    const below=seg.filter(v=>v<-1).length;
+    if(above>=4||below>=4) violations.push({rule:6,idx:i,desc:`점 ${i-3}~${i+1}: 5개 중 4개 ±1σ 외부`});
+  }
+
+  // Rule 7: 15 within 1σ
+  for(let i=14;i<n;i++){
+    const seg=z.slice(i-14,i+1);
+    if(seg.every(v=>Math.abs(v)<1)) violations.push({rule:7,idx:i,desc:`점 ${i-13}~${i+1}: 15개 연속 ±1σ 내부`});
+  }
+
+  // Rule 8: 8 outside 1σ
+  for(let i=7;i<n;i++){
+    const seg=z.slice(i-7,i+1);
+    if(seg.every(v=>Math.abs(v)>1)) violations.push({rule:8,idx:i,desc:`점 ${i-6}~${i+1}: 8개 연속 ±1σ 외부`});
+  }
+
+  return violations;
+}
+
+// ════════════════════════════════════════════════════
+//  CHART HELPERS
+// ════════════════════════════════════════════════════
+const COLORS = {
+  primary: 'rgba(124,58,237,0.9)',
+  primaryLight: 'rgba(124,58,237,0.15)',
+  ucl: 'rgba(239,68,68,0.8)',
+  lcl: 'rgba(239,68,68,0.8)',
+  cl:  'rgba(34,197,94,0.8)',
+  ooc: 'rgba(239,68,68,1)',
+  mint: 'rgba(91,184,153,0.8)',
+  sky: 'rgba(91,160,200,0.8)',
+};
+
+function makeControlChart(canvasId, labels, points, ucl, cl, lcl, yLabel, oocIdx=[]) {
+  const ptColors = points.map((p,i) =>
+    oocIdx.includes(i) ? COLORS.ooc :
+    (p>ucl||p<lcl) ? COLORS.ooc : COLORS.primary
+  );
+  const ptSizes = points.map((p,i) => (p>ucl||p<lcl||oocIdx.includes(i)) ? 6 : 4);
+
+  return createChart(canvasId, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        { label: yLabel, data: points, borderColor: COLORS.primary, borderWidth: 1.5,
+          pointBackgroundColor: ptColors, pointRadius: ptSizes, tension: 0.3,
+          fill: false },
+        { label: 'UCL', data: Array(points.length).fill(ucl),
+          borderColor: COLORS.ucl, borderDash: [4,4], borderWidth: 1.5,
+          pointRadius: 0, fill: false },
+        { label: 'CL', data: Array(points.length).fill(cl),
+          borderColor: COLORS.cl, borderDash: [6,3], borderWidth: 1.5,
+          pointRadius: 0, fill: false },
+        { label: 'LCL', data: Array(points.length).fill(Math.max(lcl,0)),
+          borderColor: COLORS.lcl, borderDash: [4,4], borderWidth: 1.5,
+          pointRadius: 0, fill: false },
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: true,
+      plugins: { legend: { display: false },
+        tooltip: { callbacks: { label: ctx => `${ctx.dataset.label}: ${ctx.parsed.y?.toFixed(4)||ctx.parsed.y}` } }
+      },
+      scales: {
+        x: { grid: { color: 'rgba(0,0,0,0.04)' }, ticks: { font: { size: 10 } } },
+        y: { grid: { color: 'rgba(0,0,0,0.04)' }, ticks: { font: { size: 10 } } }
+      }
+    }
+  });
+}
+
+// ════════════════════════════════════════════════════
+//  MAIN ANALYSIS
+// ════════════════════════════════════════════════════
+function runAnalysis() {
+  const nums = parseData();
+  if(!nums || nums.length < 4) {
+    alert('최소 4개 이상의 숫자 데이터를 입력해주세요.');
+    return;
+  }
+
+  state.lsl = parseFloat(document.getElementById('lsl').value);
+  state.usl = parseFloat(document.getElementById('usl').value);
+  state.sgSize = parseInt(document.getElementById('sgSize').value)||1;
+  state.data = nums;
+
+  // Build groups
+  const n = state.sgSize;
+  const groups = [];
+  for(let i=0;i<nums.length;i+=n) groups.push(nums.slice(i,i+n));
+  state.groups = groups;
+
+  // Capability
+  const cap = calcCapability(nums, groups, state.lsl, state.usl, n);
+  state.cap = cap;
+
+  // OOC detection
+  const oocCount = nums.filter(v => v>state.usl || v<state.lsl).length;
+
+  // Update KPIs
+  document.getElementById('kpi-n').textContent = nums.length;
+  document.getElementById('kpi-mean').textContent = cap.xbar.toFixed(4);
+  document.getElementById('kpi-std').textContent = cap.sigWithin.toFixed(4);
+  document.getElementById('kpi-cp').textContent = cap.Cp.toFixed(3);
+  document.getElementById('kpi-cpk').textContent = cap.Cpk.toFixed(3);
+  document.getElementById('kpi-ooc').textContent = oocCount;
+  document.getElementById('dataCountStatus').textContent = `데이터 ${nums.length}개 분석 완료`;
+
+  // KPI status badges
+  setKpiStatus('kpi-cp-status', cap.Cp);
+  setKpiStatus('kpi-cpk-status', cap.Cpk);
+
+  // Histogram preview
+  drawHistPreview(nums);
+
+  // Capability tab
+  updateCapabilityTab(cap, nums, groups, n);
+
+  // SPC tab
+  updateSPCTab(groups, cap, n);
+
+  state.analysed = true;
+
+  // Alert
+  const alertEl = document.getElementById('homeAlert');
+  if(cap.Cpk < 1.0) {
+    alertEl.innerHTML = `<div class="alert-box alert-danger">⚠️ Cpk = ${cap.Cpk.toFixed(3)} — 공정능력이 부족합니다. 즉각적인 개선 조치가 필요합니다.</div>`;
+  } else if(cap.Cpk < 1.33) {
+    alertEl.innerHTML = `<div class="alert-box alert-warning">💡 Cpk = ${cap.Cpk.toFixed(3)} — 공정능력이 충분하지 않습니다. 공정 관리를 강화하세요.</div>`;
+  } else {
+    alertEl.innerHTML = `<div class="alert-box alert-success">✅ Cpk = ${cap.Cpk.toFixed(3)} — 공정능력이 충분합니다.</div>`;
+  }
+}
+
+function setKpiStatus(elId, val) {
+  const el = document.getElementById(elId);
+  if(val >= 1.33) { el.textContent = '양호'; el.className = 'kpi-status status-ok'; }
+  else if(val >= 1.0) { el.textContent = '주의'; el.className = 'kpi-status status-warn'; }
+  else { el.textContent = '불량'; el.className = 'kpi-status status-fail'; }
+}
+
+function gradeStatus(v) {
+  if(v >= 1.33) return 'status-ok';
+  if(v >= 1.0) return 'status-warn';
+  return 'status-fail';
+}
+
+// ════════════════════════════════════════════════════
+//  HISTOGRAM PREVIEW
+// ════════════════════════════════════════════════════
+function drawHistPreview(data) {
+  const mn = Math.min(...data), mx = Math.max(...data);
+  const bins = 15;
+  const w = (mx-mn)/bins;
+  const labels = [], counts = [];
+  for(let i=0;i<bins;i++){
+    labels.push((mn+i*w).toFixed(2));
+    const lo = mn+i*w, hi = lo+w;
+    counts.push(data.filter(v=>v>=lo&&(i===bins-1?v<=hi:v<hi)).length);
+  }
+
+  createChart('histPreview', {
+    type:'bar',
+    data:{ labels, datasets:[{
+      label:'빈도', data:counts,
+      backgroundColor:'rgba(167,139,250,0.5)',
+      borderColor:'rgba(124,58,237,0.8)',
+      borderWidth:1
+    }]},
+    options:{ responsive:true, plugins:{legend:{display:false}},
+      scales:{ x:{ticks:{font:{size:9},maxTicksLimit:6}}, y:{ticks:{font:{size:9}}} } }
+  });
+}
+
+// ════════════════════════════════════════════════════
+//  CAPABILITY TAB
+// ════════════════════════════════════════════════════
+function updateCapabilityTab(cap, data, groups, n) {
+  const { Cp, Cpk, Pp, Ppk, xbar, sigWithin, sigOverall } = cap;
+
+  // KPI chips
+  const setCapKpi = (id, val) => {
+    document.getElementById(id).textContent = val.toFixed(3);
+    const sEl = document.getElementById(id+'-s');
+    const grade = val>=1.67?'매우충분':val>=1.33?'충분':val>=1.0?'주의':val>=0.67?'미흡':'불량';
+    sEl.textContent = grade;
+    sEl.className = 'kpi-status ' + gradeStatus(val);
+  };
+  setCapKpi('cap-cp', Cp);
+  setCapKpi('cap-cpk', Cpk);
+  setCapKpi('cap-pp', Pp);
+  setCapKpi('cap-ppk', Ppk);
+
+  // Sigma level needle
+  const sigLvl = Math.min(Cpk * 3, 6);
+  document.getElementById('sigmaLevel').textContent = sigLvl.toFixed(1) + ' σ';
+  document.getElementById('sigmaNeedle').style.left = (sigLvl/6*100)+'%';
+
+  // Defect rate
+  const def = defectRate(Cpk);
+  document.getElementById('cap-defppm').textContent = def.ppm.toLocaleString();
+  document.getElementById('cap-defpct').textContent = def.pct + '%';
+
+  // Sparklines
+  const maxVal = Math.max(sigWithin, sigOverall, Math.abs(cap.usl-xbar)||1, Math.abs(xbar-cap.lsl)||1, 1);
+  const setBar = (bid, sid, val) => {
+    document.getElementById(bid).style.width = Math.min(val/maxVal*100,100)+'%';
+    document.getElementById(sid).textContent = val.toFixed(4);
+  };
+  setBar('sb-within','sv-within', sigWithin);
+  setBar('sb-overall','sv-overall', sigOverall);
+  setBar('sb-uslm','sv-uslm', state.usl - xbar);
+  setBar('sb-mlsl','sv-mlsl', xbar - state.lsl);
+
+  // Highlight grade row
+  [0,1,2,3,4].forEach(i => {
+    const row = document.getElementById('judgeRow'+i);
+    row.style.background = '';
+    row.style.fontWeight = '';
+  });
+  const grade = Cp>=1.67?0:Cp>=1.33?1:Cp>=1.0?2:Cp>=0.67?3:4;
+  const row = document.getElementById('judgeRow'+grade);
+  row.style.background = 'linear-gradient(135deg,#EDE5FF,#F5EFFF)';
+  row.style.fontWeight = '700';
+
+  // Capability distribution chart
+  drawCapabilityChart(data, xbar, sigWithin, state.lsl, state.usl, Cp, Cpk, Pp, Ppk);
+
+  // Q-Q Plot
+  drawQQChart(data);
+
+  // Box Plot
+  drawBoxChart(groups);
+
+  // Normality test
+  const sw = shapiroWilkApprox(data);
+  const normEl = document.getElementById('normTestResult');
+  normEl.innerHTML = sw.normal
+    ? `<div class="alert-box alert-success">✅ 정규성 검정 통과 (W=${sw.W}, p=${sw.p} > 0.05) — 공정능력지수 계산 유효</div>`
+    : `<div class="alert-box alert-warning">⚠️ 정규성 불만족 (W=${sw.W}, p=${sw.p} < 0.05) — Box-Cox 변환 권장</div>`;
+  document.getElementById('capNormAlert').innerHTML = normEl.innerHTML;
+}
+
+function drawCapabilityChart(data, xbar, sigW, lsl, usl, Cp, Cpk, Pp, Ppk) {
+  const mn = Math.min(lsl-sigW*2, ...data);
+  const mx = Math.max(usl+sigW*2, ...data);
+  const steps = 200;
+  const step = (mx-mn)/steps;
+  const xNorm = [], yNorm = [], yOverall = [];
+
+  for(let i=0;i<=steps;i++){
+    const x = mn+i*step;
+    xNorm.push(+x.toFixed(4));
+    const sigO = std(data,1);
+    yNorm.push(+(1/(sigW*Math.sqrt(2*Math.PI))*Math.exp(-0.5*((x-xbar)/sigW)**2)).toFixed(6));
+    yOverall.push(+(1/(sigO*Math.sqrt(2*Math.PI))*Math.exp(-0.5*((x-xbar)/sigO)**2)).toFixed(6));
+  }
+
+  // Histogram bins
+  const bins = 20; const bw = (Math.max(...data)-Math.min(...data))/bins;
+  const bLabels=[], bCounts=[];
+  for(let i=0;i<bins;i++){
+    const lo=Math.min(...data)+i*bw, hi=lo+bw;
+    bLabels.push(lo.toFixed(2));
+    const cnt = data.filter(v=>v>=lo&&(i===bins-1?v<=hi:v<hi)).length;
+    // normalize to density
+    bCounts.push(+(cnt/(data.length*bw)).toFixed(6));
+  }
+
+  createChart('capabilityChart', {
+    type:'bar',
+    data:{
+      labels: bLabels,
+      datasets:[
+        { type:'bar', label:'데이터 밀도', data:bCounts, backgroundColor:'rgba(167,139,250,0.35)', borderColor:'rgba(124,58,237,0.5)', borderWidth:1, yAxisID:'y' },
+      ]
+    },
+    options:{
+      responsive:true,
+      plugins:{
+        legend:{display:false},
+        annotation: {
+          annotations: {
+            lslLine: { type:'line', xMin:lsl, xMax:lsl, borderColor:'rgba(239,68,68,0.9)', borderWidth:2, borderDash:[5,3],
+              label:{content:'LSL', display:true, position:'start', font:{size:10}} },
+            uslLine: { type:'line', xMin:usl, xMax:usl, borderColor:'rgba(239,68,68,0.9)', borderWidth:2, borderDash:[5,3],
+              label:{content:'USL', display:true, position:'start', font:{size:10}} },
+          }
+        }
+      },
+      scales:{
+        x:{ticks:{font:{size:9},maxTicksLimit:8}},
+        y:{ticks:{font:{size:9}},title:{display:true,text:'밀도',font:{size:10}}}
+      }
+    }
+  });
+}
+
+function drawQQChart(data) {
+  const sorted = [...data].sort((a,b)=>a-b);
+  const n = sorted.length;
+  const m = mean(data), s = std(data,1);
+  const theoretical = sorted.map((_,i)=>{
+    const p = (i+0.5)/n;
+    // inverse normal approximation
+    return m + s * invNorm(p);
+  });
+  const pts = sorted.map((v,i)=>({x:theoretical[i],y:v}));
+  const minV = Math.min(...theoretical), maxV = Math.max(...theoretical);
+
+  createChart('qqChart', {
+    type:'scatter',
+    data:{datasets:[
+      { label:'Q-Q', data:pts, backgroundColor:'rgba(124,58,237,0.6)', pointRadius:4 },
+      { label:'기준선', data:[{x:minV,y:minV},{x:maxV,y:maxV}],
+        type:'line', borderColor:'rgba(239,68,68,0.8)', borderWidth:1.5, pointRadius:0, fill:false }
+    ]},
+    options:{
+      responsive:true,
+      plugins:{legend:{display:false}},
+      scales:{
+        x:{title:{display:true,text:'이론적 분위수',font:{size:10}},ticks:{font:{size:9}}},
+        y:{title:{display:true,text:'샘플 분위수',font:{size:10}},ticks:{font:{size:9}}}
+      }
+    }
+  });
+}
+
+function invNorm(p) {
+  // Rational approximation
+  if(p<=0)return -4;if(p>=1)return 4;
+  const a=[2.50662823884,-18.61500062529,41.39119773534,-25.44106049637];
+  const b=[-8.47351093090,23.08336743743,-21.06224101826,3.13082909833];
+  const c=[0.3374754822726147,0.9761690190917186,0.1607979714918209,0.0276438810333863,0.0038405729373609,0.0003951896511349,0.0000321767881768,0.0000002888167364,0.0000003960315187];
+  const q=p-0.5;
+  if(Math.abs(q)<0.42){
+    const r=q*q;
+    return q*(((a[3]*r+a[2])*r+a[1])*r+a[0])/((((b[3]*r+b[2])*r+b[1])*r+b[0])*r+1);
+  }
+  let r=p<0.5?p:1-p;
+  r=Math.log(-Math.log(r));
+  let x=c[0];
+  for(let i=1;i<9;i++) x+=c[i]*Math.pow(r,i);
+  return q<0?-x:x;
+}
+
+function drawBoxChart(groups) {
+  // Simple box-plot simulation using scatter with error bars (Chart.js basic)
+  const labels = groups.map((_,i)=>`G${i+1}`);
+  const medians = groups.map(g=>median(g));
+  const q1s = groups.map(g=>{const s=[...g].sort((a,b)=>a-b);return s[Math.floor(s.length/4)];});
+  const q3s = groups.map(g=>{const s=[...g].sort((a,b)=>a-b);return s[Math.floor(3*s.length/4)];});
+  const mins = groups.map(g=>Math.min(...g));
+  const maxs = groups.map(g=>Math.max(...g));
+
+  createChart('boxChart', {
+    type:'bar',
+    data:{
+      labels,
+      datasets:[
+        { label:'Q1~Q3 범위', data: q3s.map((q3,i)=>q3-q1s[i]), base:q1s,
+          backgroundColor:'rgba(167,139,250,0.4)', borderColor:'rgba(124,58,237,0.7)', borderWidth:1 },
+        { type:'scatter', label:'중앙값', data:medians.map((m,i)=>({x:i,y:m})),
+          backgroundColor:'rgba(239,68,68,0.8)', pointRadius:5 }
+      ]
+    },
+    options:{
+      responsive:true,
+      plugins:{legend:{display:false}},
+      scales:{
+        x:{ticks:{font:{size:9},maxTicksLimit:10}},
+        y:{ticks:{font:{size:9}}}
+      }
+    }
+  });
+}
+
+// ════════════════════════════════════════════════════
+//  SPC TAB
+// ════════════════════════════════════════════════════
+function selectChartType(type) {
+  state.chartType = type;
+  ['imr','xbarr','xbars','auto'].forEach(t=>{
+    const btn = document.getElementById('btn-'+t);
+    btn.style.background = 'var(--border)'; btn.style.color = 'var(--text)';
+    btn.classList.remove('btn-primary');
+  });
+  const id = 'btn-'+type.toLowerCase();
+  document.getElementById(id).style.background = '';
+  document.getElementById(id).classList.add('btn-primary');
+  if(state.analysed) updateSPCTab(state.groups, state.cap, state.sgSize);
+}
+
+function updateSPCTab(groups, cap, n) {
+  const autoN = n===1?'IMR':n<=9?'XbarR':'XbarS';
+  const chartType = state.chartType==='Auto' ? autoN : state.chartType;
+  document.getElementById('chartTypeLabel').textContent = `(선택됨: ${chartType})`;
+  document.getElementById('mainChartTitle').textContent = `${chartType} 관리도`;
+
+  // Build chart data
+  let upperPts, lowerPts, upperCL, upperUCL, upperLCL, lowerCL, lowerUCL, lowerLCL;
+  let upperLabel, lowerLabel;
+  const labels = groups.map((_,i)=>`${i+1}`);
+
+  if(chartType==='IMR' || n===1) {
+    const pts = groups.map(g=>g[0]);
+    const xbar = mean(pts);
+    const MR = [null];
+    for(let i=1;i<pts.length;i++) MR.push(Math.abs(pts[i]-pts[i-1]));
+    const MRbar = mean(MR.slice(1));
+    const sigMR = MRbar / d2(2);
+
+    upperPts = pts; upperCL = xbar;
+    upperUCL = xbar + 3*sigMR; upperLCL = xbar - 3*sigMR;
+    lowerPts = MR; lowerCL = MRbar;
+    lowerUCL = D4[2]*MRbar; lowerLCL = 0;
+    upperLabel = 'I Chart (개별값)'; lowerLabel = 'MR Chart (이동범위)';
+
+    document.getElementById('cl-ucl1').textContent = upperUCL.toFixed(4);
+    document.getElementById('cl-cl1').textContent = upperCL.toFixed(4);
+    document.getElementById('cl-lcl1').textContent = Math.max(upperLCL,0).toFixed(4);
+    document.getElementById('cl-ucl2').textContent = lowerUCL.toFixed(4);
+    document.getElementById('cl-cl2').textContent = lowerCL.toFixed(4);
+    document.getElementById('cl-lcl2').textContent = '0';
+
+    // Nelson on I chart
+    const violations = nelsonRules(upperPts, upperCL, sigMR);
+    updateNelsonDisplay(violations);
+    const oocIdx = violations.filter(v=>v.rule===1).map(v=>v.idx);
+    makeControlChart('upperChart', labels, upperPts, upperUCL, upperCL, upperLCL, 'I', oocIdx);
+    makeControlChart('lowerChart', labels, lowerPts.map(v=>v||0), lowerUCL, lowerCL, 0, 'MR');
+
+  } else {
+    const xbars = groups.map(g=>mean(g));
+    const xbarBar = mean(xbars);
+    const actualN = n<=9?Math.min(n,10):n;
+
+    if(chartType==='XbarR' || n<=9) {
+      const ranges = groups.map(g=>Math.max(...g)-Math.min(...g));
+      const Rbar = mean(ranges);
+      const a2 = A2[Math.min(actualN,10)]||0.308;
+      upperPts = xbars; upperCL = xbarBar;
+      upperUCL = xbarBar + a2*Rbar; upperLCL = xbarBar - a2*Rbar;
+      lowerPts = ranges; lowerCL = Rbar;
+      lowerUCL = (D4[actualN]||3.267)*Rbar; lowerLCL = (D3[actualN]||0)*Rbar;
+      upperLabel = 'X̄ Chart (부분군 평균)'; lowerLabel = 'R Chart (부분군 범위)';
+    } else {
+      const stds = groups.map(g=>std(g,1));
+      const sbar = mean(stds);
+      const c4n = c4(actualN);
+      const a3 = 3/(c4n*Math.sqrt(actualN));
+      upperPts = xbars; upperCL = xbarBar;
+      upperUCL = xbarBar + a3*sbar; upperLCL = xbarBar - a3*sbar;
+      lowerPts = stds; lowerCL = sbar;
+      const b4 = 1 + 3*Math.sqrt(1-c4n**2)/c4n;
+      const b3 = Math.max(0, 1 - 3*Math.sqrt(1-c4n**2)/c4n);
+      lowerUCL = b4*sbar; lowerLCL = b3*sbar;
+      upperLabel = 'X̄ Chart (부분군 평균)'; lowerLabel = 'S Chart (부분군 표준편차)';
+    }
+
+    document.getElementById('cl-ucl1').textContent = upperUCL.toFixed(4);
+    document.getElementById('cl-cl1').textContent = upperCL.toFixed(4);
+    document.getElementById('cl-lcl1').textContent = Math.max(upperLCL,0).toFixed(4);
+    document.getElementById('cl-ucl2').textContent = lowerUCL.toFixed(4);
+    document.getElementById('cl-cl2').textContent = lowerCL.toFixed(4);
+    document.getElementById('cl-lcl2').textContent = Math.max(lowerLCL,0).toFixed(4);
+
+    const sigma = (upperUCL - upperCL) / 3;
+    const violations = nelsonRules(upperPts, upperCL, sigma);
+    updateNelsonDisplay(violations);
+    const oocIdx = violations.filter(v=>v.rule===1).map(v=>v.idx);
+    makeControlChart('upperChart', labels, upperPts, upperUCL, upperCL, Math.max(upperLCL,0), 'X̄', oocIdx);
+    makeControlChart('lowerChart', labels, lowerPts, lowerUCL, lowerCL, Math.max(lowerLCL,0), chartType==='XbarR'?'R':'S');
+  }
+
+  document.getElementById('upperChartLabel').textContent = upperLabel;
+  document.getElementById('lowerChartLabel').textContent = lowerLabel;
+  const badgeEl = document.getElementById('mainChartBadge');
+  badgeEl.textContent = chartType; badgeEl.style.background='#EDE5FF'; badgeEl.style.color='#7C3AED';
+}
+
+function updateNelsonDisplay(violations) {
+  const vList = document.getElementById('violationList');
+  const ruleIcons = ['','🔴','🔵','📈','〰️','🔶','🔷','📐','🔲'];
+  const triggered = new Set(violations.map(v=>v.rule));
+
+  if(violations.length === 0) {
+    document.getElementById('nelsonSummary').innerHTML = '<div class="alert-box alert-success" style="margin:0">✅ 이상 없음 — 공정이 관리 상태입니다.</div>';
+    vList.innerHTML = '';
+  } else {
+    document.getElementById('nelsonSummary').innerHTML = `<div class="alert-box alert-danger" style="margin:0">⚠️ <strong>${violations.length}건</strong>의 이상 감지됨 (Rule ${[...triggered].join(', ')} 위반)</div>`;
+    vList.innerHTML = violations.slice(0,15).map(v=>`
+      <div class="violation-item">
+        <span class="v-icon">${ruleIcons[v.rule]}</span>
+        <span class="v-rule">Rule ${v.rule}</span>
+        <span class="v-point">${v.desc}</span>
+      </div>`).join('');
+  }
+
+  // Nelson grid
+  const nelsonDescs = [
+    '',
+    '1개 이상의 관측치가 ±3σ 초과',
+    '9개 이상의 관측치가 중심선 한쪽에',
+    '6개 이상의 관측치가 단조 증가/감소',
+    '14개 이상의 관측치가 교대 진동',
+    '3개 중 2개 이상이 같은 방향 ±2σ 외부',
+    '5개 중 4개 이상이 같은 방향 ±1σ 외부',
+    '15개 이상의 관측치가 ±1σ 내부',
+    '8개 이상의 관측치가 모두 ±1σ 외부'
+  ];
+  document.getElementById('nelsonGrid').innerHTML = [1,2,3,4,5,6,7,8].map(r=>`
+    <div class="rule-card ${triggered.has(r)?'triggered':''}">
+      <div class="rule-num">Rule ${r} ${triggered.has(r)?'🚨':''}</div>
+      <div class="rule-desc">${nelsonDescs[r]}</div>
+      ${triggered.has(r)?`<div class="rule-hit">⚠️ ${violations.filter(v=>v.rule===r).length}건 위반</div>`:''}
+    </div>`).join('');
+}
+
+// ════════════════════════════════════════════════════
+//  SIMULATOR
+// ════════════════════════════════════════════════════
+function updateSimParam(key, val) {
+  state.sim[key] = parseFloat(val);
+  document.getElementById('sv-'+key).textContent = val;
+  runSimulation();
+}
+
+function runSimulation() {
+  const { nsg, sgsize, target, std:sg_std, shift, tol } = state.sim;
+  const lsl = target - tol, usl = target + tol;
+  const data = [];
+  for(let i=0;i<nsg;i++){
+    const s = shift + (Math.random()-0.5)*sg_std*0.1;
+    for(let j=0;j<Math.max(1,sgsize);j++) data.push(target+s+randn()*sg_std);
+  }
+
+  const n = Math.max(1,sgsize);
+  const groups = [];
+  for(let i=0;i<data.length;i+=n) groups.push(data.slice(i,i+n));
+  const cap = calcCapability(data, groups, lsl, usl, n);
+
+  document.getElementById('sim-cp').textContent = cap.Cp.toFixed(3);
+  document.getElementById('sim-cpk').textContent = cap.Cpk.toFixed(3);
+
+  // Distribution chart
+  const mn=Math.min(lsl-sg_std*2,...data), mx=Math.max(usl+sg_std*2,...data);
+  const bins=25, bw=(mx-mn)/bins;
+  const bL=[],bC=[];
+  for(let i=0;i<bins;i++){
+    const lo=mn+i*bw, hi=lo+bw;
+    bL.push(lo.toFixed(1));
+    bC.push(data.filter(v=>v>=lo&&(i===bins-1?v<=hi:v<hi)).length);
+  }
+  const lslBin = Math.floor((lsl-mn)/bw);
+  const uslBin = Math.floor((usl-mn)/bw);
+  const bgColors = bL.map((_,i)=> (i<lslBin||i>uslBin)?'rgba(239,68,68,0.5)':'rgba(167,139,250,0.5)');
+
+  createChart('simDistChart',{
+    type:'bar',data:{labels:bL,datasets:[{label:'빈도',data:bC,backgroundColor:bgColors,borderWidth:0}]},
+    options:{responsive:true,plugins:{legend:{display:false}},scales:{x:{ticks:{font:{size:9},maxTicksLimit:6}},y:{ticks:{font:{size:9}}}}}
+  });
+
+  // I-MR preview
+  const pts = groups.map(g=>mean(g));
+  const xbar = mean(pts), sigW = calcSigmaWithin(groups, n);
+  const uccl = xbar+3*sigW, lccl = xbar-3*sigW;
+  const labels = pts.map((_,i)=>''+(i+1));
+  makeControlChart('simControlChart', labels, pts, uccl, xbar, lccl, 'Mean');
+
+  // Store for "apply to main"
+  state.simData = { data, lsl, usl, sgSize: n };
+}
+
+function loadSimToMain() {
+  if(!state.simData) return;
+  document.getElementById('rawData').value = state.simData.data.map(v=>v.toFixed(4)).join(', ');
+  document.getElementById('lsl').value = state.simData.lsl;
+  document.getElementById('usl').value = state.simData.usl;
+  document.getElementById('sgSize').value = state.simData.sgSize;
+  switchTab('home');
+  runAnalysis();
+}
+
+function randn() {
+  let u=0,v=0;
+  while(u===0)u=Math.random();
+  while(v===0)v=Math.random();
+  return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);
+}
+
+// ════════════════════════════════════════════════════
+//  BEFORE / AFTER COMPARE
+// ════════════════════════════════════════════════════
+
+// Snapshot storage: [{label, data, lsl, usl, cap}]
+let snapshots = [];
+let compareState = { before: null, after: null };
+
+// Called when user saves a snapshot (Before)
+function saveSnapshot() {
+  if (!state.analysed || !state.data.length) {
+    alert('먼저 대시보드에서 데이터를 분석하세요.');
+    return;
+  }
+  const label = `스냅샷 ${snapshots.length + 1}`;
+  const snap = {
+    label,
+    data: [...state.data],
+    lsl: state.lsl,
+    usl: state.usl,
+    sgSize: state.sgSize,
+    cap: { ...state.cap }
+  };
+  snapshots.push(snap);
+  renderSnapshotList();
+
+  // Auto-load first snapshot as Before
+  if (snapshots.length === 1) {
+    loadSnapshotAsBefore(0);
+  }
+}
+
+function renderSnapshotList() {
+  const colors = ['#A78BFA','#2DD4BF','#F9A8D4','#FCD34D','#6EE7B7'];
+  const container = document.getElementById('snapshotList');
+  container.innerHTML = snapshots.map((s, i) => `
+    <div class="snapshot-item ${compareState.before && compareState.before.label===s.label ? 'active-snap' : ''}"
+         onclick="loadSnapshotAsBefore(${i})">
+      <div class="snap-dot" style="background:${colors[i%colors.length]}"></div>
+      ${s.label}
+    </div>`).join('');
+}
+
+function loadSnapshotAsBefore(idx) {
+  const snap = snapshots[idx];
+  compareState.before = snap;
+
+  // Fill Before panel
+  document.getElementById('cmp-before-data').value = snap.data.join(', ');
+  document.getElementById('cmp-before-lsl').value = snap.lsl;
+  document.getElementById('cmp-before-usl').value = snap.usl;
+  document.getElementById('cmp-before-mean').textContent = snap.cap.xbar.toFixed(4);
+  document.getElementById('cmp-before-std').textContent = snap.cap.sigWithin.toFixed(4);
+  document.getElementById('cmp-before-cp').textContent = snap.cap.Cp.toFixed(3);
+  document.getElementById('cmp-before-cpk').textContent = snap.cap.Cpk.toFixed(3);
+  document.getElementById('legendBefore').textContent = snap.label;
+
+  // Pre-fill After with same data for editing
+  if (!compareState.after) {
+    document.getElementById('cmp-after-data').value = snap.data.join(', ');
+    document.getElementById('cmp-after-lsl').value = snap.lsl;
+    document.getElementById('cmp-after-usl').value = snap.usl;
+    updateAfter();
+  }
+
+  renderSnapshotList();
+  renderCompare();
+}
+
+function updateAfter() {
+  const raw = document.getElementById('cmp-after-data').value;
+  const nums = raw.split(/[\s,;]+/).map(Number).filter(n => !isNaN(n) && n !== 0);
+  if (nums.length < 4) return;
+
+  const lsl = parseFloat(document.getElementById('cmp-after-lsl').value) || state.lsl;
+  const usl = parseFloat(document.getElementById('cmp-after-usl').value) || state.usl;
+  const n = state.sgSize || 1;
+  const groups = [];
+  for (let i = 0; i < nums.length; i += n) groups.push(nums.slice(i, i + n));
+  const cap = calcCapability(nums, groups, lsl, usl, n);
+
+  compareState.after = { label: 'After', data: nums, lsl, usl, sgSize: n, cap };
+
+  document.getElementById('cmp-after-mean').textContent = cap.xbar.toFixed(4);
+  document.getElementById('cmp-after-std').textContent = cap.sigWithin.toFixed(4);
+  document.getElementById('cmp-after-cp').textContent = cap.Cp.toFixed(3);
+  document.getElementById('cmp-after-cpk').textContent = cap.Cpk.toFixed(3);
+
+  renderCompare();
+}
+
+function resetAfter() {
+  if (!compareState.before) return;
+  document.getElementById('cmp-after-data').value = compareState.before.data.join(', ');
+  document.getElementById('cmp-after-lsl').value = compareState.before.lsl;
+  document.getElementById('cmp-after-usl').value = compareState.before.usl;
+  compareState.after = null;
+  updateAfter();
+}
+
+// What-If quick presets
+function applyWhatIf(type) {
+  if (!compareState.before) { alert('먼저 스냅샷을 저장하세요.'); return; }
+  const orig = compareState.before.data;
+  const m = mean(orig);
+  const s = std(orig, 1);
+  let newData;
+
+  if (type === 'sigma_half') {
+    // Compress each point toward the mean (σ → σ/2)
+    newData = orig.map(v => +(m + (v - m) * 0.5).toFixed(4));
+  } else if (type === 'center') {
+    // Shift all points so mean = spec center
+    const specCenter = (compareState.before.lsl + compareState.before.usl) / 2;
+    const shift = specCenter - m;
+    newData = orig.map(v => +(v + shift).toFixed(4));
+  } else if (type === 'noise') {
+    // Add extra noise (σ × 1.5)
+    newData = orig.map(v => +(v + (Math.random() - 0.5) * s).toFixed(4));
+  }
+
+  document.getElementById('cmp-after-data').value = newData.join(', ');
+  updateAfter();
+}
+
+function renderCompare() {
+  const B = compareState.before;
+  const A = compareState.after;
+  if (!B || !A) return;
+
+  const metrics = ['Cp', 'Cpk', 'Pp', 'Ppk'];
+  metrics.forEach(m => {
+    const bVal = B.cap[m];
+    const aVal = A.cap[m];
+    const delta = aVal - bVal;
+    const pct = bVal !== 0 ? ((delta / bVal) * 100).toFixed(1) : '0';
+    const improved = delta > 0.01;
+    const degraded = delta < -0.01;
+    const key = m.toLowerCase();
+
+    document.getElementById('db-' + key).textContent = bVal.toFixed(3);
+    document.getElementById('da-' + key).textContent = aVal.toFixed(3);
+
+    const ddEl = document.getElementById('dd-' + key);
+    const dcEl = document.getElementById('dc-' + key);
+
+    if (improved) {
+      ddEl.textContent = `▲ +${pct}%`;
+      ddEl.className = 'delta-change pos';
+      dcEl.className = 'delta-card improved';
+    } else if (degraded) {
+      ddEl.textContent = `▼ ${pct}%`;
+      ddEl.className = 'delta-change neg';
+      dcEl.className = 'delta-card degraded';
+    } else {
+      ddEl.textContent = '변화 없음';
+      ddEl.className = 'delta-change neu';
+      dcEl.className = 'delta-card neutral';
+    }
+  });
+
+  renderOverlayChart(B, A);
+  renderInsights(B, A);
+}
+
+function renderOverlayChart(B, A) {
+  // Build shared x-axis bins spanning both datasets
+  const allData = [...B.data, ...A.data];
+  const lsl = Math.min(B.lsl, A.lsl);
+  const usl = Math.max(B.usl, A.usl);
+  const mn = Math.min(...allData, lsl - (usl - lsl) * 0.2);
+  const mx = Math.max(...allData, usl + (usl - lsl) * 0.2);
+  const bins = 30;
+  const bw = (mx - mn) / bins;
+
+  const labels = [];
+  const bCounts = [];
+  const aCounts = [];
+
+  for (let i = 0; i < bins; i++) {
+    const lo = mn + i * bw, hi = lo + bw;
+    labels.push(lo.toFixed(2));
+    const inBin = (arr) => arr.filter(v => v >= lo && (i === bins - 1 ? v <= hi : v < hi)).length / (arr.length * bw);
+    bCounts.push(+inBin(B.data).toFixed(6));
+    aCounts.push(+inBin(A.data).toFixed(6));
+  }
+
+  // LSL/USL vertical line annotation via custom plugin
+  const lslIdx = Math.floor((B.lsl - mn) / bw);
+  const uslIdx = Math.floor((B.usl - mn) / bw);
+
+  destroyChart('overlayChart');
+  const ctx = document.getElementById('overlayChart').getContext('2d');
+  state.charts['overlayChart'] = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: B.label,
+          data: bCounts,
+          backgroundColor: 'rgba(124,58,237,0.45)',
+          borderColor: 'rgba(124,58,237,0.8)',
+          borderWidth: 1,
+          borderRadius: 2,
+        },
+        {
+          label: 'After',
+          data: aCounts,
+          backgroundColor: 'rgba(45,212,191,0.45)',
+          borderColor: 'rgba(45,212,191,0.9)',
+          borderWidth: 1,
+          borderRadius: 2,
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: ctx => `${ctx.dataset.label}: ${(ctx.parsed.y * 100).toFixed(2)}%`
+          }
+        }
+      },
+      scales: {
+        x: { ticks: { font: { size: 9 }, maxTicksLimit: 10 }, grid: { color: 'rgba(0,0,0,0.04)' } },
+        y: { ticks: { font: { size: 9 } }, grid: { color: 'rgba(0,0,0,0.04)' }, title: { display: true, text: '밀도', font: { size: 10 } } }
+      }
+    },
+    plugins: [{
+      id: 'specLines',
+      afterDraw(chart) {
+        const { ctx, chartArea: { top, bottom }, scales: { x } } = chart;
+        const drawLine = (idx, color, label) => {
+          if (idx < 0 || idx >= labels.length) return;
+          const xPos = x.getPixelForValue(idx);
+          ctx.save();
+          ctx.beginPath();
+          ctx.moveTo(xPos, top); ctx.lineTo(xPos, bottom);
+          ctx.strokeStyle = color; ctx.lineWidth = 1.5;
+          ctx.setLineDash([4, 3]);
+          ctx.stroke();
+          ctx.fillStyle = color; ctx.font = 'bold 10px sans-serif';
+          ctx.fillText(label, xPos + 3, top + 14);
+          ctx.restore();
+        };
+        drawLine(lslIdx, 'rgba(239,68,68,0.85)', 'LSL');
+        drawLine(uslIdx, 'rgba(239,68,68,0.85)', 'USL');
+      }
+    }]
+  });
+}
+
+function renderInsights(B, A) {
+  const insights = [];
+  const bCpk = B.cap.Cpk, aCpk = A.cap.Cpk;
+  const bMean = B.cap.xbar, aMean = A.cap.xbar;
+  const bSig = B.cap.sigWithin, aSig = A.cap.sigWithin;
+  const specCenter = (B.lsl + B.usl) / 2;
+
+  // Cpk change
+  if (aCpk - bCpk > 0.05) insights.push({ ico: '✅', text: `Cpk가 <strong>${bCpk.toFixed(3)} → ${aCpk.toFixed(3)}</strong>으로 개선됐습니다. 공정 품질이 향상됐습니다.` });
+  else if (aCpk - bCpk < -0.05) insights.push({ ico: '❌', text: `Cpk가 <strong>${bCpk.toFixed(3)} → ${aCpk.toFixed(3)}</strong>으로 저하됐습니다. 원인 파악이 필요합니다.` });
+  else insights.push({ ico: '➡️', text: `Cpk 변화가 미미합니다 (${bCpk.toFixed(3)} → ${aCpk.toFixed(3)}).` });
+
+  // Sigma change
+  const sigDelta = ((aSig - bSig) / bSig * 100).toFixed(1);
+  if (aSig < bSig * 0.95) insights.push({ ico: '📉', text: `산포(σ)가 <strong>${sigDelta}%</strong> 감소했습니다. 공정 일관성이 높아졌습니다.` });
+  else if (aSig > bSig * 1.05) insights.push({ ico: '📈', text: `산포(σ)가 <strong>+${sigDelta}%</strong> 증가했습니다. 변동 원인을 점검하세요.` });
+
+  // Mean shift
+  const meanShift = (aMean - bMean).toFixed(4);
+  const centeringBefore = Math.abs(bMean - specCenter);
+  const centeringAfter = Math.abs(aMean - specCenter);
+  if (centeringAfter < centeringBefore * 0.8) insights.push({ ico: '🎯', text: `평균이 규격 중심(${specCenter.toFixed(2)})에 더 가까워졌습니다 (편차 ${centeringBefore.toFixed(4)} → ${centeringAfter.toFixed(4)}).` });
+  else if (Math.abs(parseFloat(meanShift)) > bSig * 0.5) insights.push({ ico: '↔️', text: `평균이 <strong>${meanShift}</strong>만큼 이동했습니다. 의도된 조정인지 확인하세요.` });
+
+  // Grade change
+  const grade = v => v >= 1.67 ? '매우충분(0)' : v >= 1.33 ? '충분(1)' : v >= 1.0 ? '주의(2)' : v >= 0.67 ? '미흡(3)' : '불량(4)';
+  if (grade(bCpk) !== grade(aCpk)) insights.push({ ico: '🏷️', text: `공정능력 등급: <strong>${grade(bCpk)} → ${grade(aCpk)}</strong>으로 변경됐습니다.` });
+
+  document.getElementById('insightList').innerHTML = insights.map(ins =>
+    `<li><span class="iico">${ins.ico}</span><span>${ins.text}</span></li>`
+  ).join('');
+}
+
+// ════════════════════════════════════════════════════
+//  INIT
+// ════════════════════════════════════════════════════
+window.addEventListener('DOMContentLoaded', ()=>{
+  loadSampleData();
+  runSimulation();
+});
 </script>
 </body>
 </html>
